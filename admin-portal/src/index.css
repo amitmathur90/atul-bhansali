@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #8e2a8e;
+  --color-brand-navy-dark: #651f65;
+  --color-brand-saffron: #14a9b4;
+  --color-brand-saffron-dark: #0e7e87;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+#root {
+  min-height: 100svh;
+}

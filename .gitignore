@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+!.env.example
+backend/uploads/
+backend/prisma/dev.db
+.expo/
+.expo-shared/
+*.log
+.DS_Store
+android/
+ios/
+.vscode/
+coverage/
+mobile-app/android/.certs/

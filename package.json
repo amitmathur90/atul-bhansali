@@ -1,0 +1,16 @@
+{
+  "name": "atul-bhansali-citizen-connect",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "admin-portal",
+    "mobile-app",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:admin": "npm run dev --workspace=admin-portal",
+    "dev:mobile": "npm run start --workspace=mobile-app"
+  }
+}

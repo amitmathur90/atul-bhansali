@@ -1,0 +1,23 @@
+# Optional. This project runs fine against a natively-installed PostgreSQL (which is what
+# local dev has been using) — this file is here only as a portable alternative, e.g. if you
+# set up the project on a machine without Postgres already installed.
+#
+# Usage: docker compose up -d
+# Then point backend/.env's DATABASE_URL at:
+#   postgresql://citizen_connect_app:citizen_connect_dev_password@localhost:5432/citizen_connect?schema=public
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: citizen_connect_app
+      POSTGRES_PASSWORD: citizen_connect_dev_password
+      POSTGRES_DB: citizen_connect
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

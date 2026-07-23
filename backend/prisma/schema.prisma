@@ -1,0 +1,436 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enums (mirrored in packages/shared/src/enums — keep both in sync) ---
+
+enum StaffRole {
+  STAFF
+  MLA
+  SUPER_ADMIN
+}
+
+enum ComplaintStatus {
+  RECEIVED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+enum ImageType {
+  CITIZEN_UPLOAD
+  STAFF_WORK_PHOTO
+}
+
+enum AnnouncementType {
+  DEVELOPMENT_PROJECT
+  EMERGENCY_NOTICE
+  GOVT_SCHEME
+  EVENT
+  BLOOD_DONATION
+  HEALTH_CAMP
+  EMPLOYMENT_NEWS
+}
+
+enum DevProjectCategory {
+  ROAD
+  SCHOOL
+  HOSPITAL
+  WATER
+  PARK
+  OTHER
+}
+
+enum DevProjectStatus {
+  PLANNED
+  ONGOING
+  COMPLETED
+}
+
+enum EmergencyContactCategory {
+  POLICE
+  FIRE
+  AMBULANCE
+  WATER_DEPT
+  ELECTRICITY_DEPT
+  MLA_OFFICE
+  OTHER
+}
+
+enum NotificationType {
+  STATUS_CHANGE
+  ANNOUNCEMENT
+  EMERGENCY
+  MEETING
+}
+
+enum RecipientType {
+  CITIZEN
+  STAFF
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+}
+
+// Generic owner/actor discriminator used by auth + audit tables, since citizens and
+// staff live in two separate tables (different auth mechanisms — see build plan).
+enum OwnerType {
+  CITIZEN
+  STAFF
+}
+
+enum DevicePlatform {
+  ANDROID
+  IOS
+}
+
+enum AppointmentStatus {
+  PENDING
+  SCHEDULED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+// --- Lookup tables ---
+
+model Ward {
+  id         String   @id @default(uuid())
+  wardNumber Int      @unique
+  name       String
+  city       String
+  createdAt  DateTime @default(now())
+
+  citizens            Citizen[]
+  complaints          Complaint[]
+  staffAssignments    StaffWardAssignment[]
+  developmentProjects DevelopmentProject[]
+}
+
+model Department {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  categories Category[]
+}
+
+model Category {
+  id           String     @id @default(uuid())
+  name         String     @unique
+  icon         String?
+  isActive     Boolean    @default(true)
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime   @default(now())
+
+  complaints          Complaint[]
+  staffAssignments    StaffCategoryAssignment[]
+}
+
+// --- People ---
+
+model Citizen {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  address   String?
+  wardId    String?
+  ward      Ward?    @relation(fields: [wardId], references: [id])
+  city      String?
+  pincode   String?
+  isBlocked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  complaints   Complaint[]
+  feedbacks    Feedback[]
+  appointments Appointment[]
+}
+
+model StaffMember {
+  id           String    @id @default(uuid())
+  name         String
+  username     String    @unique
+  passwordHash String
+  role         StaffRole @default(STAFF)
+  phone        String?
+  designation  String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  wardAssignments      StaffWardAssignment[]
+  categoryAssignments  StaffCategoryAssignment[]
+  assignedComplaints   Complaint[]              @relation("AssignedStaff")
+  createdAnnouncements Announcement[]
+}
+
+model StaffWardAssignment {
+  staffId String
+  wardId  String
+  staff   StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  ward    Ward        @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, wardId])
+}
+
+model StaffCategoryAssignment {
+  staffId    String
+  categoryId String
+  staff      StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, categoryId])
+}
+
+// --- Auth ---
+
+model OtpVerification {
+  id         String     @id @default(uuid())
+  phone      String
+  otpHash    String
+  purpose    OtpPurpose
+  expiresAt  DateTime
+  attempts   Int        @default(0)
+  verifiedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([phone])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  ownerType OwnerType
+  ownerId   String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([ownerType, ownerId])
+}
+
+model DeviceToken {
+  id        String         @id @default(uuid())
+  ownerType OwnerType
+  ownerId   String
+  token     String         @unique
+  platform  DevicePlatform
+  createdAt DateTime       @default(now())
+
+  @@index([ownerType, ownerId])
+}
+
+// --- Complaints (core workflow) ---
+
+model Complaint {
+  id              String            @id @default(uuid())
+  complaintNumber String            @unique
+  citizenId       String
+  citizen         Citizen           @relation(fields: [citizenId], references: [id])
+  title           String
+  description     String
+  categoryId      String
+  category        Category          @relation(fields: [categoryId], references: [id])
+  priority        ComplaintPriority @default(MEDIUM)
+  status          ComplaintStatus   @default(RECEIVED)
+  wardId          String
+  ward            Ward              @relation(fields: [wardId], references: [id])
+  address         String
+  latitude        Float?
+  longitude       Float?
+  contactNumber   String
+  assignedStaffId String?
+  assignedStaff   StaffMember?      @relation("AssignedStaff", fields: [assignedStaffId], references: [id])
+  assignedAt      DateTime?
+  resolvedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  images        ComplaintImage[]
+  statusHistory ComplaintStatusHistory[]
+  feedback      Feedback?
+
+  @@index([citizenId])
+  @@index([assignedStaffId])
+  @@index([status])
+  @@index([wardId])
+  @@index([categoryId])
+}
+
+model ComplaintImage {
+  id             String    @id @default(uuid())
+  complaintId    String
+  complaint      Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  url            String
+  type           ImageType
+  uploadedByType OwnerType
+  uploadedById   String
+  createdAt      DateTime  @default(now())
+
+  @@index([complaintId])
+}
+
+// Full transition log — powers the required complaint Timeline and the
+// "notify citizen on every status change" behavior. Current status still
+// lives as a column on Complaint for fast filtering/queries.
+model ComplaintStatusHistory {
+  id            String           @id @default(uuid())
+  complaintId   String
+  complaint     Complaint        @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  fromStatus    ComplaintStatus?
+  toStatus      ComplaintStatus
+  remarks       String?
+  changedByType OwnerType
+  changedById   String
+  createdAt     DateTime         @default(now())
+
+  @@index([complaintId])
+}
+
+// Citizen requests a meeting with the MLA; staff/admin schedules or rejects it.
+// Kept single-status (no history table, unlike Complaint) since there's no
+// requirement for a full audit timeline here.
+model Appointment {
+  id            String            @id @default(uuid())
+  citizenId     String
+  citizen       Citizen           @relation(fields: [citizenId], references: [id])
+  purpose       String
+  preferredDate DateTime
+  contactNumber String
+  status        AppointmentStatus @default(PENDING)
+  scheduledAt   DateTime?
+  remarks       String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([citizenId])
+  @@index([status])
+}
+
+model Feedback {
+  id          String    @id @default(uuid())
+  complaintId String    @unique
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  citizenId   String
+  citizen     Citizen   @relation(fields: [citizenId], references: [id])
+  rating      Int
+  comment     String?
+  satisfied   Boolean
+  createdAt   DateTime  @default(now())
+}
+
+// --- Content ---
+
+model Announcement {
+  id          String           @id @default(uuid())
+  title       String
+  body        String
+  type        AnnouncementType
+  imageUrl    String?
+  publishAt   DateTime         @default(now())
+  isPublished Boolean          @default(true)
+  createdById String
+  createdBy   StaffMember      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+
+  @@index([isPublished, publishAt])
+}
+
+model DevelopmentProject {
+  id             String             @id @default(uuid())
+  title          String
+  category       DevProjectCategory
+  description    String
+  budget         Decimal?           @db.Decimal(14, 2)
+  wardId         String
+  ward           Ward               @relation(fields: [wardId], references: [id])
+  status         DevProjectStatus   @default(PLANNED)
+  startDate      DateTime?
+  completionDate DateTime?
+  createdAt      DateTime           @default(now())
+
+  gallery Gallery[]
+}
+
+model Gallery {
+  id        String              @id @default(uuid())
+  projectId String
+  project   DevelopmentProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  imageUrl  String
+  caption   String?
+  order     Int                 @default(0)
+}
+
+model WelfareScheme {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  eligibility String
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([isActive])
+}
+
+model EmergencyContact {
+  id       String                   @id @default(uuid())
+  name     String
+  category EmergencyContactCategory
+  phone    String
+  order    Int                      @default(0)
+  isActive Boolean                  @default(true)
+}
+
+model Notification {
+  id                    String           @id @default(uuid())
+  recipientType         RecipientType
+  recipientId           String
+  title                 String
+  body                  String
+  type                  NotificationType
+  relatedComplaintId    String?
+  relatedAnnouncementId String?
+  relatedAppointmentId  String?
+  isRead                Boolean          @default(false)
+  pushStatus            String?
+  createdAt             DateTime         @default(now())
+
+  @@index([recipientType, recipientId])
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id         String    @id @default(uuid())
+  actorType  OwnerType
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([actorType, actorId])
+}
