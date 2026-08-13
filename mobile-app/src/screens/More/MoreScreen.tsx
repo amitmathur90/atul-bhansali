@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { clearTokens } from "../../lib/secure-store";
 import type { MainTabParamList, ProfileStackParamList } from "../../navigation/types";
 import { useAuthStore } from "../../store/authStore";
@@ -23,7 +23,7 @@ export function MoreScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
           <Ionicons name="person" size={32} color={colors.navy} />
@@ -54,7 +54,7 @@ export function MoreScreen({ navigation }: Props) {
       />
       <MenuRow label="सहायता और समर्थन" onPress={() => navigation.navigate("ContactMla")} />
       <MenuRow label="लॉगआउट" onPress={handleLogout} destructive />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -78,7 +78,8 @@ function MenuRow({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface, padding: spacing.xl },
+  container: { flex: 1, backgroundColor: colors.surface },
+  scrollContent: { padding: spacing.xl, paddingBottom: spacing.xl * 3 },
   profileCard: {
     backgroundColor: colors.background,
     borderRadius: radius.lg,

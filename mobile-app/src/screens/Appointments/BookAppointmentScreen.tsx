@@ -4,6 +4,8 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,7 +54,12 @@ export function BookAppointmentScreen({ navigation }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "android" ? 24 : 0}
+    >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.intro}>
         माननीय विधायक से मुलाकात हेतु अनुरोध भेजें। कार्यालय आपके अनुरोध की समीक्षा कर तारीख व समय तय करेगा।
       </Text>
@@ -98,7 +105,8 @@ export function BookAppointmentScreen({ navigation }: Props) {
       <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate("MyAppointments")}>
         <Text style={styles.linkButtonText}>मेरे मुलाकात अनुरोध देखें</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

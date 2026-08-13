@@ -4,7 +4,9 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -95,7 +97,12 @@ export function ComplaintDetailScreen({ route }: Props) {
   const isRejected = complaint.status === "REJECTED";
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "android" ? 24 : 0}
+    >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.headerRow}>
         <Text style={styles.complaintNumber}>{complaint.complaintNumber}</Text>
         <View style={[styles.statusPill, { backgroundColor: `${STATUS_COLORS[complaint.status]}20` }]}>
@@ -192,7 +199,8 @@ export function ComplaintDetailScreen({ route }: Props) {
           {feedback ? <FeedbackSummary feedback={feedback} /> : <FeedbackForm complaintId={complaint.id} />}
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

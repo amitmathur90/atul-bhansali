@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -158,7 +160,12 @@ export function NewComplaintScreen({ navigation }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "android" ? 24 : 0}
+    >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>शिकायत का शीर्षक</Text>
       <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="समस्या का संक्षिप्त विवरण" />
 
@@ -254,7 +261,8 @@ export function NewComplaintScreen({ navigation }: Props) {
       <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
         {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>शिकायत दर्ज करें</Text>}
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
