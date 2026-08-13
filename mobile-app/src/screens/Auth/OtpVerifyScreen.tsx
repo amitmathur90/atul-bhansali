@@ -20,11 +20,11 @@ import { useAuthStore } from "../../store/authStore";
 type Props = NativeStackScreenProps<AuthStackParamList, "OtpVerify">;
 
 export function OtpVerifyScreen({ route }: Props) {
-  const { phone, purpose } = route.params;
+  const { phone, purpose, devOtp } = route.params;
   const setSession = useAuthStore((s) => s.setSession);
   const wards = useWards();
 
-  const [otp, setOtp] = useState("");
+  const [otp, setOtp] = useState(devOtp ?? "");
   const [name, setName] = useState("");
   const [wardId, setWardId] = useState("");
   const [address, setAddress] = useState("");
@@ -77,6 +77,13 @@ export function OtpVerifyScreen({ route }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>OTP सत्यापित करें</Text>
         <Text style={styles.subtitle}>+91 {phone} पर भेजा गया 6 अंकों का कोड दर्ज करें</Text>
+
+        {devOtp && (
+          <View style={styles.devOtpBanner}>
+            <Text style={styles.devOtpLabel}>DEV MODE — OTP:</Text>
+            <Text style={styles.devOtpValue}>{devOtp}</Text>
+          </View>
+        )}
 
         <TextInput
           style={styles.otpInput}
@@ -134,6 +141,20 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 24, paddingTop: 60 },
   title: { fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: 8 },
   subtitle: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 24 },
+  devOtpBanner: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fef3c7",
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    borderRadius: 8,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  devOtpLabel: { fontSize: 12, fontWeight: "700", color: "#92400e" },
+  devOtpValue: { fontSize: 18, fontWeight: "800", letterSpacing: 2, color: "#92400e" },
   otpInput: {
     borderWidth: 1,
     borderColor: "#ddd",

@@ -2,7 +2,7 @@ import type { NavigatorScreenParams } from "@react-navigation/native";
 
 export type AuthStackParamList = {
   PhoneEntry: undefined;
-  OtpVerify: { phone: string; purpose: "REGISTRATION" | "LOGIN" };
+  OtpVerify: { phone: string; purpose: "REGISTRATION" | "LOGIN"; devOtp?: string };
 };
 
 export type HomeStackParamList = {

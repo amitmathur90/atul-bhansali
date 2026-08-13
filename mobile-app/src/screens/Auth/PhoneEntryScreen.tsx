@@ -37,7 +37,11 @@ export function PhoneEntryScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const res = await apiClient.post("/auth/otp/request", { phone });
-      navigation.navigate("OtpVerify", { phone, purpose: res.data.purpose });
+      navigation.navigate("OtpVerify", {
+        phone,
+        purpose: res.data.purpose,
+        devOtp: res.data.devOtp,
+      });
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
