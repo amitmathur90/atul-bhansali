@@ -34,8 +34,8 @@ function App() {
           >
             <Route path="/" element={<RoleHome />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/complaints" element={<ComplaintsListPage title="Complaints" />} />
-            <Route path="/my-complaints" element={<ComplaintsListPage title="My Complaints" />} />
+            <Route path="/complaints" element={<ComplaintsListPage title="शिकायतें" />} />
+            <Route path="/my-complaints" element={<ComplaintsListPage title="मेरी शिकायतें" />} />
             <Route path="/complaints/:id" element={<ComplaintDetailPage />} />
             <Route path="/citizens" element={<CitizensPage />} />
             <Route path="/staff" element={<StaffPage />} />
