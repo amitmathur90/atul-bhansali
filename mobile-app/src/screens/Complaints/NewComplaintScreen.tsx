@@ -32,6 +32,13 @@ interface PickedImage {
   type: string;
 }
 
+const PRIORITY_LABELS: Record<string, string> = {
+  LOW: "कम",
+  MEDIUM: "सामान्य",
+  HIGH: "उच्च",
+  EMERGENCY: "आपातकालीन",
+};
+
 export function NewComplaintScreen({ navigation }: Props) {
   const citizen = useAuthStore((s) => s.citizen);
   const categories = useCategories();
@@ -240,9 +247,9 @@ export function NewComplaintScreen({ navigation }: Props) {
 
       <Text style={styles.label}>प्राथमिकता</Text>
       <View style={styles.pickerWrapper}>
-        <Picker selectedValue={priority} onValueChange={setPriority}>
+        <Picker style={styles.pickerWithIcon} selectedValue={priority} onValueChange={setPriority}>
           {Object.values(ComplaintPriority).map((p) => (
-            <Picker.Item key={p} label={p} value={p} />
+            <Picker.Item key={p} label={PRIORITY_LABELS[p]} value={p} />
           ))}
         </Picker>
       </View>
