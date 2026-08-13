@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Image, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { apiClient } from "../../lib/api-client";
 import type { NoticeStackParamList } from "../../navigation/types";
 import { colors, radius, shadow, spacing } from "../../theme";
@@ -14,6 +14,7 @@ interface AnnouncementItem {
   title: string;
   body: string;
   type: string;
+  imageUrl?: string | null;
   publishAt: string;
 }
 
@@ -69,9 +70,13 @@ export function AnnouncementsListScreen({ navigation }: Props) {
               style={styles.card}
               onPress={() => navigation.navigate("AnnouncementDetail", { id: item.id })}
             >
-              <View style={[styles.iconCircle, { backgroundColor: `${meta.color}20` }]}>
-                <Ionicons name={meta.icon} size={20} color={meta.color} />
-              </View>
+              {item.imageUrl ? (
+                <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} />
+              ) : (
+                <View style={[styles.iconCircle, { backgroundColor: `${meta.color}20` }]}>
+                  <Ionicons name={meta.icon} size={20} color={meta.color} />
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.body} numberOfLines={2}>
@@ -114,6 +119,7 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  thumbnail: { width: 48, height: 48, borderRadius: radius.md },
   title: { fontSize: 15, fontWeight: "600", color: colors.text },
   body: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
   date: { fontSize: 11, color: colors.textFaint, marginTop: spacing.sm },

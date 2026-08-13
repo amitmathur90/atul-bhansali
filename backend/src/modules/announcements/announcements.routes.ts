@@ -4,6 +4,8 @@ import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
 import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.middleware";
+import { upload } from "../../middleware/upload.middleware";
+import { storageProvider } from "../../storage/storage.factory";
 
 export const announcementsRouter = Router();
 
@@ -39,8 +41,19 @@ announcementsRouter.post(
   "/",
   requireAuth,
   requireRole(StaffRole.MLA, StaffRole.SUPER_ADMIN),
+  upload.single("image"),
   asyncHandler(async (req, res) => {
-    const input = createAnnouncementSchema.parse(req.body);
+    let imageUrl: string | undefined;
+    if (req.file) {
+      imageUrl = await storageProvider.upload(
+        { buffer: req.file.buffer, originalName: req.file.originalname, mimeType: req.file.mimetype },
+        "announcements",
+      );
+    }
+    const input = createAnnouncementSchema.parse({
+      ...req.body,
+      ...(imageUrl ? { imageUrl } : {}),
+    });
     const announcement = await prisma.announcement.create({
       data: { ...input, createdById: req.user!.sub },
     });
@@ -52,8 +65,19 @@ announcementsRouter.patch(
   "/:id",
   requireAuth,
   requireRole(StaffRole.MLA, StaffRole.SUPER_ADMIN),
+  upload.single("image"),
   asyncHandler(async (req, res) => {
-    const input = updateAnnouncementSchema.parse(req.body);
+    let imageUrl: string | undefined;
+    if (req.file) {
+      imageUrl = await storageProvider.upload(
+        { buffer: req.file.buffer, originalName: req.file.originalname, mimeType: req.file.mimetype },
+        "announcements",
+      );
+    }
+    const input = updateAnnouncementSchema.parse({
+      ...req.body,
+      ...(imageUrl ? { imageUrl } : {}),
+    });
     const announcement = await prisma.announcement.update({
       where: { id: req.params.id },
       data: input,

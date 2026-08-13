@@ -14,6 +14,7 @@ interface Announcement {
   title: string;
   body: string;
   type: string;
+  imageUrl?: string | null;
   isPublished: boolean;
   publishAt: string;
   createdAt: string;
@@ -24,6 +25,8 @@ export function AnnouncementsPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [type, setType] = useState<string>(AnnouncementType.EVENT);
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -31,11 +34,27 @@ export function AnnouncementsPage() {
     queryFn: async () => (await apiClient.get<{ items: Announcement[] }>("/announcements")).data.items,
   });
 
+  function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setImage(file);
+    setImagePreview(file ? URL.createObjectURL(file) : null);
+  }
+
   const createMutation = useMutation({
-    mutationFn: async () => (await apiClient.post("/announcements", { title, body, type })).data,
+    mutationFn: async () => {
+      const form = new FormData();
+      form.append("title", title);
+      form.append("body", body);
+      form.append("type", type);
+      if (image) form.append("image", image);
+      // No explicit Content-Type — the browser sets the multipart boundary automatically.
+      return (await apiClient.post("/announcements", form)).data;
+    },
     onSuccess: () => {
       setTitle("");
       setBody("");
+      setImage(null);
+      setImagePreview(null);
       setError(null);
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
     },
@@ -69,6 +88,17 @@ export function AnnouncementsPage() {
               </option>
             ))}
           </Select>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/heic"
+              onChange={handleImageSelected}
+              className="text-sm text-slate-600 dark:text-slate-300"
+            />
+            {imagePreview && (
+              <img src={imagePreview} alt="Preview" className="h-12 w-12 rounded-md object-cover" />
+            )}
+          </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button
             disabled={!title || !body || createMutation.isPending}
@@ -86,15 +116,20 @@ export function AnnouncementsPage() {
         <ul>
           {data?.map((a) => (
             <li key={a.id} className="flex items-start justify-between gap-4 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-slate-800 dark:text-slate-100">{a.title}</p>
-                  <Badge>{a.type.replace(/_/g, " ")}</Badge>
-                  {!a.isPublished && <Badge>DRAFT</Badge>}
-                  {new Date(a.publishAt) > new Date() && <Badge>SCHEDULED</Badge>}
+              <div className="flex items-start gap-3">
+                {a.imageUrl && (
+                  <img src={a.imageUrl} alt={a.title} className="h-14 w-14 flex-shrink-0 rounded-md object-cover" />
+                )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-slate-800 dark:text-slate-100">{a.title}</p>
+                    <Badge>{a.type.replace(/_/g, " ")}</Badge>
+                    {!a.isPublished && <Badge>DRAFT</Badge>}
+                    {new Date(a.publishAt) > new Date() && <Badge>SCHEDULED</Badge>}
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{a.body}</p>
+                  <p className="mt-1 text-xs text-slate-400">{new Date(a.publishAt).toLocaleString()}</p>
                 </div>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{a.body}</p>
-                <p className="mt-1 text-xs text-slate-400">{new Date(a.publishAt).toLocaleString()}</p>
               </div>
               <Button variant="danger" onClick={() => deleteMutation.mutate(a.id)}>
                 Delete
