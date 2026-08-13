@@ -4,6 +4,8 @@ import { apiClient } from "../lib/api-client";
 export interface Category {
   id: string;
   name: string;
+  departmentId: string;
+  department?: { id: string; name: string };
 }
 
 export interface Ward {
