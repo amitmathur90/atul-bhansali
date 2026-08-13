@@ -5,7 +5,7 @@ import {
   refreshTokenSchema,
   staffLoginSchema,
 } from "@abc/shared";
-import { isProduction } from "../../config/env";
+import { env } from "../../config/env";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
@@ -17,7 +17,9 @@ export const requestOtpHandler = asyncHandler(async (req, res) => {
   const result = await requestOtp(phone);
   res.json({
     purpose: result.purpose,
-    ...(isProduction ? {} : { devOtp: result.otp }),
+    // No real SMS/WhatsApp delivery is configured yet (SMS_PROVIDER=console just logs
+    // server-side), so surface the OTP in the response until a real provider is wired up.
+    ...(env.SMS_PROVIDER === "console" ? { devOtp: result.otp } : {}),
   });
 });
 
