@@ -18,12 +18,14 @@ import { departmentsRouter } from "./modules/departments/departments.routes";
 import { developmentProjectsRouter } from "./modules/development-projects/development-projects.routes";
 import { emergencyContactsRouter } from "./modules/emergency-contacts/emergency-contacts.routes";
 import { feedbackRouter } from "./modules/feedback/feedback.routes";
+import { feedAnalyticsRouter } from "./modules/feed/analytics.routes";
 import { commentsRouter } from "./modules/feed/comments.routes";
 import { followsRouter } from "./modules/feed/follows.routes";
 import { hashtagsRouter } from "./modules/feed/hashtags.routes";
 import { postsRouter } from "./modules/feed/posts.routes";
 import { profileRouter } from "./modules/feed/profile.routes";
 import { commentReportsAdminRouter, postReportCreateRouter, postReportsAdminRouter } from "./modules/feed/reports.routes";
+import { searchRouter } from "./modules/feed/search.routes";
 import { verificationRouter } from "./modules/feed/verification.routes";
 import { warningsRouter } from "./modules/feed/warnings.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
@@ -74,6 +76,8 @@ app.use("/api/post-reports", postReportsAdminRouter);
 app.use("/api/comment-reports", commentReportsAdminRouter);
 app.use("/api/posts", postsRouter);
 app.use("/api/hashtags", hashtagsRouter);
+app.use("/api/search", searchRouter);
+app.use("/api/feed-analytics", feedAnalyticsRouter);
 app.use("/api/verification-requests", verificationRouter);
 
 app.use((_req, res) => {

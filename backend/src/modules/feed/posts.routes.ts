@@ -6,6 +6,7 @@ import {
   ReactionType,
   StaffRole,
   updatePostSchema,
+  votePollSchema,
 } from "@abc/shared";
 import { Router } from "express";
 import { z } from "zod";
@@ -22,9 +23,12 @@ export const postsRouter = Router();
 
 const AUTHOR_SELECT = { id: true, name: true, isVerified: true, verifiedLabel: true, profilePhotoUrl: true };
 const SHARED_POST_INCLUDE = { author: { select: AUTHOR_SELECT } };
+const POLL_INCLUDE = { options: { orderBy: { order: "asc" as const }, include: { _count: { select: { votes: true } } } } };
 
 const listQuerySchema = z.object({
   authorId: z.string().uuid().optional(),
+  city: z.string().optional(),
+  q: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -32,6 +36,11 @@ const listQuerySchema = z.object({
 interface PostWithCounts {
   id: string;
   _count: { likes: number; comments: number };
+  poll?: {
+    id: string;
+    question: string;
+    options: { id: string; label: string; order: number; _count: { votes: number } }[];
+  } | null;
 }
 
 const EMPTY_REACTIONS: Record<string, number> = Object.fromEntries(Object.values(ReactionType).map((t) => [t, 0]));
@@ -45,7 +54,15 @@ async function serializePosts<T extends PostWithCounts>(posts: T[], citizenId?: 
   const myReactionByPost = new Map(
     citizenId ? allReactions.filter((r) => r.citizenId === citizenId).map((r) => [r.postId, r.type]) : [],
   );
-  return posts.map(({ _count, ...p }) => {
+  const myVotes = citizenId
+    ? await prisma.pollVote.findMany({
+        where: { citizenId, poll: { postId: { in: postIds } } },
+        select: { pollId: true, optionId: true },
+      })
+    : [];
+  const myVoteByPoll = new Map(myVotes.map((v) => [v.pollId, v.optionId]));
+
+  return posts.map(({ _count, poll, ...p }) => {
     const reactions = { ...EMPTY_REACTIONS };
     for (const r of allReactions) {
       if (r.postId === p.id) reactions[r.type] = (reactions[r.type] ?? 0) + 1;
@@ -56,6 +73,14 @@ async function serializePosts<T extends PostWithCounts>(posts: T[], citizenId?: 
       commentsCount: _count.comments,
       reactions,
       myReaction: myReactionByPost.get(p.id) ?? null,
+      poll: poll
+        ? {
+            id: poll.id,
+            question: poll.question,
+            myVote: myVoteByPoll.get(poll.id) ?? null,
+            options: poll.options.map((o) => ({ id: o.id, label: o.label, votesCount: o._count.votes })),
+          }
+        : null,
     };
   });
 }
@@ -82,12 +107,14 @@ postsRouter.get(
   "/",
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const { authorId, page, pageSize } = listQuerySchema.parse(req.query);
+    const { authorId, city, q, page, pageSize } = listQuerySchema.parse(req.query);
     const isStaff = req.user?.ownerType === OwnerType.STAFF;
     const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
     const where = {
       ...(isStaff ? {} : { isHidden: false, ...(await visibilityFilter(citizenId)) }),
       ...(authorId ? { authorId } : {}),
+      ...(city ? { author: { city: { equals: city, mode: "insensitive" as const } } } : {}),
+      ...(q ? { content: { contains: q, mode: "insensitive" as const } } : {}),
     };
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
@@ -95,6 +122,7 @@ postsRouter.get(
         include: {
           author: { select: AUTHOR_SELECT },
           sharedPost: { include: SHARED_POST_INCLUDE },
+          poll: { include: POLL_INCLUDE },
           _count: { select: { likes: true, comments: true } },
         },
         orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
@@ -116,6 +144,7 @@ postsRouter.get(
       include: {
         author: { select: AUTHOR_SELECT },
         sharedPost: { include: SHARED_POST_INCLUDE },
+        poll: { include: POLL_INCLUDE },
         visibleTo: { select: { citizenId: true } },
         _count: { select: { likes: true, comments: true } },
       },
@@ -175,7 +204,7 @@ postsRouter.post(
     }
 
     const hashtags = extractHashtags(input.content);
-    const { visibleToPhones, ...postFields } = input;
+    const { visibleToPhones, pollQuestion, pollOptions, ...postFields } = input;
 
     let viewerIds: string[] = [];
     if (visibleToPhones) {
@@ -184,6 +213,19 @@ postsRouter.post(
       viewerIds = viewers.map((v) => v.id);
       if (viewerIds.length === 0) {
         throw new AppError(400, "NO_MATCHING_USERS", "None of the given phone numbers match a registered citizen");
+      }
+    }
+
+    let pollOptionLabels: string[] = [];
+    if (pollQuestion) {
+      const author = await prisma.citizen.findUnique({ where: { id: req.user!.sub }, select: { isVerified: true } });
+      if (!author?.isVerified) throw new AppError(403, "FORBIDDEN", "Only verified accounts can create polls");
+      pollOptionLabels = (pollOptions ?? "")
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+      if (pollOptionLabels.length < 2) {
+        throw new AppError(400, "INVALID_POLL", "A poll needs at least two options");
       }
     }
 
@@ -197,10 +239,21 @@ postsRouter.post(
         ...(viewerIds.length > 0
           ? { visibleTo: { create: viewerIds.map((citizenId) => ({ citizenId })) } }
           : {}),
+        ...(pollQuestion
+          ? {
+              poll: {
+                create: {
+                  question: pollQuestion,
+                  options: { create: pollOptionLabels.map((label, order) => ({ label, order })) },
+                },
+              },
+            }
+          : {}),
       },
       include: {
         author: { select: AUTHOR_SELECT },
         sharedPost: { include: SHARED_POST_INCLUDE },
+        poll: { include: POLL_INCLUDE },
         _count: { select: { likes: true, comments: true } },
       },
     });
@@ -359,5 +412,40 @@ postsRouter.patch(
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
     const updated = await prisma.post.update({ where: { id: req.params.id }, data: { isHidden: !post.isHidden } });
     res.json(updated);
+  }),
+);
+
+// One vote per citizen per poll. Voting again with a different option changes the vote;
+// there is no "unvote" (polls don't support removing a vote once cast, only switching it).
+postsRouter.post(
+  "/:id/poll/vote",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    if (req.user!.ownerType !== OwnerType.CITIZEN) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens can vote");
+    }
+    const { optionId } = votePollSchema.parse(req.body);
+    const poll = await prisma.poll.findUnique({ where: { postId: req.params.id } });
+    if (!poll) throw new AppError(404, "NOT_FOUND", "This post has no poll");
+    const option = await prisma.pollOption.findUnique({ where: { id: optionId } });
+    if (!option || option.pollId !== poll.id) throw new AppError(400, "INVALID_OPTION", "Invalid poll option");
+
+    const citizenId = req.user!.sub;
+    const existing = await prisma.pollVote.findUnique({ where: { pollId_citizenId: { pollId: poll.id, citizenId } } });
+    if (existing) {
+      await prisma.pollVote.update({ where: { id: existing.id }, data: { optionId } });
+    } else {
+      await prisma.pollVote.create({ data: { pollId: poll.id, optionId, citizenId } });
+    }
+
+    const options = await prisma.pollOption.findMany({
+      where: { pollId: poll.id },
+      orderBy: { order: "asc" },
+      include: { _count: { select: { votes: true } } },
+    });
+    res.json({
+      myVote: optionId,
+      options: options.map((o) => ({ id: o.id, label: o.label, votesCount: o._count.votes })),
+    });
   }),
 );

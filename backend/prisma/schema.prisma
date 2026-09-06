@@ -249,6 +249,7 @@ model Citizen {
   commentReports         CommentReport[]
   visiblePosts           PostVisibleTo[]
   warnings               UserWarning[]
+  pollVotes              PollVote[]
 }
 
 model StaffMember {
@@ -635,6 +636,7 @@ model Post {
   sharedPostId String?
   sharedPost   Post?          @relation("PostShares", fields: [sharedPostId], references: [id], onDelete: SetNull)
   shares       Post[]         @relation("PostShares")
+  locationTag  String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -643,9 +645,44 @@ model Post {
   reports   PostReport[]
   hashtags  Hashtag[]
   visibleTo PostVisibleTo[]
+  poll      Poll?
 
   @@index([isHidden, createdAt])
   @@index([authorId])
+}
+
+model Poll {
+  id        String   @id @default(uuid())
+  postId    String   @unique
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  question  String
+  createdAt DateTime @default(now())
+
+  options PollOption[]
+  votes   PollVote[]
+}
+
+model PollOption {
+  id     String @id @default(uuid())
+  pollId String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  label  String
+  order  Int    @default(0)
+
+  votes PollVote[]
+}
+
+model PollVote {
+  id        String     @id @default(uuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  citizenId String
+  citizen   Citizen    @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([pollId, citizenId])
 }
 
 model PostVisibleTo {

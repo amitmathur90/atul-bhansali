@@ -21,6 +21,7 @@ import {
 import { HashtagText } from "../../components/HashtagText";
 import { ReportModal } from "../../components/ReportModal";
 import { apiClient } from "../../lib/api-client";
+import { timeAgo } from "../../lib/timeAgo";
 import type { FeedStackParamList } from "../../navigation/types";
 import { useAuthStore } from "../../store/authStore";
 import { colors, radius, shadow, spacing } from "../../theme";
@@ -49,11 +50,19 @@ interface FeedAuthor {
   profilePhotoUrl?: string | null;
 }
 
+interface FeedPoll {
+  id: string;
+  question: string;
+  myVote: string | null;
+  options: { id: string; label: string; votesCount: number }[];
+}
+
 interface FeedPost {
   id: string;
   content: string;
   mediaType: string;
   mediaUrl?: string | null;
+  locationTag?: string | null;
   isPinned: boolean;
   isFeatured: boolean;
   likesCount: number;
@@ -62,6 +71,7 @@ interface FeedPost {
   myReaction: string | null;
   createdAt: string;
   author: FeedAuthor;
+  poll?: FeedPoll | null;
   sharedPost?: (Pick<FeedPost, "id" | "content" | "mediaUrl" | "mediaType"> & { author: FeedAuthor }) | null;
 }
 
@@ -79,10 +89,20 @@ export function FeedListScreen({ navigation }: Props) {
   const [visibility, setVisibility] = useState<"PUBLIC" | "FOLLOWERS_ONLY" | "PRIVATE">("PUBLIC");
   const [visibilityMenuOpen, setVisibilityMenuOpen] = useState(false);
   const [privatePhones, setPrivatePhones] = useState("");
+  const [locationTag, setLocationTag] = useState("");
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState("");
+  const [localOnly, setLocalOnly] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["feed-posts"],
-    queryFn: async () => (await apiClient.get<{ items: FeedPost[] }>("/posts")).data.items,
+    queryKey: ["feed-posts", { localOnly, city: citizen?.city }],
+    queryFn: async () =>
+      (
+        await apiClient.get<{ items: FeedPost[] }>("/posts", {
+          params: localOnly && citizen?.city ? { city: citizen.city } : {},
+        })
+      ).data.items,
   });
 
   const { data: trending } = useQuery({
@@ -99,6 +119,11 @@ export function FeedListScreen({ navigation }: Props) {
       if (!sharedPostId) {
         form.append("visibility", visibility);
         if (visibility === "PRIVATE") form.append("visibleToPhones", privatePhones);
+        if (locationTag.trim()) form.append("locationTag", locationTag.trim());
+        if (pollOpen && pollQuestion.trim() && pollOptions.trim()) {
+          form.append("pollQuestion", pollQuestion.trim());
+          form.append("pollOptions", pollOptions.trim());
+        }
       }
       return (await apiClient.post("/posts", form)).data;
     },
@@ -107,9 +132,19 @@ export function FeedListScreen({ navigation }: Props) {
       setImage(null);
       setVisibility("PUBLIC");
       setPrivatePhones("");
+      setLocationTag("");
+      setPollOpen(false);
+      setPollQuestion("");
+      setPollOptions("");
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
     },
     onError: () => Alert.alert("पोस्ट नहीं हो सकी", "कृपया विवरण जांचें और पुनः प्रयास करें।"),
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: async ({ postId, optionId }: { postId: string; optionId: string }) =>
+      (await apiClient.post(`/posts/${postId}/poll/vote`, { optionId })).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feed-posts"] }),
   });
 
   const reactMutation = useMutation({
@@ -232,6 +267,34 @@ export function FeedListScreen({ navigation }: Props) {
                 />
               )}
 
+              <TextInput
+                style={styles.locationInput}
+                placeholder="📍 स्थान जोड़ें (वैकल्पिक)"
+                value={locationTag}
+                onChangeText={setLocationTag}
+              />
+
+              <TouchableOpacity onPress={() => setPollOpen((o) => !o)} style={styles.pollToggle}>
+                <Ionicons name="bar-chart-outline" size={14} color={colors.navy} />
+                <Text style={styles.pollToggleText}>{pollOpen ? "पोल हटाएं" : "पोल जोड़ें (सत्यापित खातों के लिए)"}</Text>
+              </TouchableOpacity>
+              {pollOpen && (
+                <View style={styles.pollComposer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="पोल सवाल"
+                    value={pollQuestion}
+                    onChangeText={setPollQuestion}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="विकल्प, कॉमा से अलग करें (जैसे सड़कें,पानी,सफाई)"
+                    value={pollOptions}
+                    onChangeText={setPollOptions}
+                  />
+                </View>
+              )}
+
               <View style={styles.composerRow}>
                 <TouchableOpacity onPress={handlePickImage} style={styles.composerImageButton}>
                   <Ionicons name="image-outline" size={20} color={colors.navy} />
@@ -249,6 +312,25 @@ export function FeedListScreen({ navigation }: Props) {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {citizen?.city && (
+              <View style={styles.localFilterRow}>
+                <TouchableOpacity
+                  style={[styles.localFilterChip, !localOnly && styles.localFilterChipActive]}
+                  onPress={() => setLocalOnly(false)}
+                >
+                  <Text style={[styles.localFilterText, !localOnly && styles.localFilterTextActive]}>सभी पोस्ट</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.localFilterChip, localOnly && styles.localFilterChipActive]}
+                  onPress={() => setLocalOnly(true)}
+                >
+                  <Text style={[styles.localFilterText, localOnly && styles.localFilterTextActive]}>
+                    📍 मेरा क्षेत्र ({citizen.city})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         }
         ListEmptyComponent={
@@ -267,13 +349,28 @@ export function FeedListScreen({ navigation }: Props) {
                 style={styles.authorRow}
                 onPress={() => navigation.navigate("UserProfile", { citizenId: item.author.id })}
               >
-                <Text style={styles.authorName}>{item.author.name}</Text>
-                {item.author.isVerified && (
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={13} color={colors.info} />
-                    <Text style={styles.verifiedText}>{item.author.verifiedLabel ?? "सत्यापित"}</Text>
+                {item.author.profilePhotoUrl ? (
+                  <Image source={{ uri: item.author.profilePhotoUrl }} style={styles.authorAvatar} />
+                ) : (
+                  <View style={styles.authorAvatarPlaceholder}>
+                    <Ionicons name="person" size={14} color={colors.textFaint} />
                   </View>
                 )}
+                <View>
+                  <View style={styles.authorNameRow}>
+                    <Text style={styles.authorName}>{item.author.name}</Text>
+                    {item.author.isVerified && (
+                      <View style={styles.verifiedBadge}>
+                        <Ionicons name="checkmark-circle" size={13} color={colors.info} />
+                        <Text style={styles.verifiedText}>{item.author.verifiedLabel ?? "सत्यापित"}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.postTime}>
+                    {timeAgo(item.createdAt)}
+                    {item.locationTag ? `  ·  📍 ${item.locationTag}` : ""}
+                  </Text>
+                </View>
               </TouchableOpacity>
               {item.author.id === citizen?.id ? (
                 <TouchableOpacity
@@ -306,6 +403,10 @@ export function FeedListScreen({ navigation }: Props) {
                   <Image source={{ uri: item.sharedPost.mediaUrl }} style={styles.sharedImage} />
                 )}
               </View>
+            )}
+
+            {item.poll && (
+              <PollBlock poll={item.poll} onVote={(optionId) => voteMutation.mutate({ postId: item.id, optionId })} />
             )}
 
             {Object.values(item.reactions).some((c) => c > 0) && (
@@ -373,6 +474,39 @@ export function FeedListScreen({ navigation }: Props) {
   );
 }
 
+function PollBlock({ poll, onVote }: { poll: FeedPoll; onVote: (optionId: string) => void }) {
+  const totalVotes = poll.options.reduce((sum, o) => sum + o.votesCount, 0);
+  return (
+    <View style={styles.pollBlock}>
+      <Text style={styles.pollQuestion}>{poll.question}</Text>
+      {poll.options.map((option) => {
+        const pct = totalVotes > 0 ? Math.round((option.votesCount / totalVotes) * 100) : 0;
+        const isMine = poll.myVote === option.id;
+        return (
+          <TouchableOpacity
+            key={option.id}
+            style={styles.pollOption}
+            disabled={!!poll.myVote}
+            onPress={() => onVote(option.id)}
+          >
+            {poll.myVote && (
+              <View style={[styles.pollOptionBar, { width: `${pct}%` }, isMine && styles.pollOptionBarMine]} />
+            )}
+            <View style={styles.pollOptionContent}>
+              <Text style={[styles.pollOptionLabel, isMine && styles.pollOptionLabelMine]}>
+                {isMine ? "✓ " : ""}
+                {option.label}
+              </Text>
+              {poll.myVote && <Text style={styles.pollOptionPct}>{pct}%</Text>}
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+      <Text style={styles.pollTotal}>{totalVotes} वोट</Text>
+    </View>
+  );
+}
+
 function FollowButton({ citizenId }: { citizenId: string }) {
   const queryClient = useQueryClient();
   const { data } = useQuery({
@@ -432,6 +566,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: spacing.xs,
   },
+  locationInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    fontSize: 12,
+    marginTop: spacing.sm,
+  },
+  pollToggle: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: spacing.sm, alignSelf: "flex-start" },
+  pollToggleText: { fontSize: 11, color: colors.navy, fontWeight: "600" },
+  pollComposer: { gap: spacing.xs, marginTop: spacing.xs },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    fontSize: 12,
+  },
+  localFilterRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
+  localFilterChip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  localFilterChipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+  localFilterText: { fontSize: 12, fontWeight: "600", color: colors.textMuted },
+  localFilterTextActive: { color: "#fff" },
   composerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.sm },
   composerImageButton: { padding: 6 },
   postButton: { backgroundColor: colors.navy, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 8 },
@@ -442,8 +607,19 @@ const styles = StyleSheet.create({
   pinnedRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: spacing.xs },
   pinnedText: { fontSize: 11, color: colors.saffronDark, fontWeight: "600" },
   postHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  authorRow: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
+  authorAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.background },
+  authorAvatarPlaceholder: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  authorNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   authorName: { fontSize: 14, fontWeight: "700", color: colors.text },
+  postTime: { fontSize: 11, color: colors.textFaint, marginTop: 1 },
   verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 2 },
   verifiedText: { fontSize: 10, color: colors.info, fontWeight: "600" },
   followButton: { borderWidth: 1, borderColor: colors.navy, borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 4 },
@@ -462,6 +638,41 @@ const styles = StyleSheet.create({
   sharedAuthorName: { fontSize: 12, fontWeight: "700", color: colors.text },
   sharedContent: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   sharedImage: { width: "100%", height: 120, borderRadius: radius.sm, marginTop: spacing.xs },
+  pollBlock: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    gap: spacing.xs,
+  },
+  pollQuestion: { fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 2 },
+  pollOption: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    overflow: "hidden",
+    justifyContent: "center",
+  },
+  pollOptionBar: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: `${colors.navy}20`,
+  },
+  pollOptionBarMine: { backgroundColor: `${colors.navy}35` },
+  pollOptionContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+  },
+  pollOptionLabel: { fontSize: 12, color: colors.text },
+  pollOptionLabelMine: { fontWeight: "700", color: colors.navy },
+  pollOptionPct: { fontSize: 11, fontWeight: "700", color: colors.textMuted },
+  pollTotal: { fontSize: 11, color: colors.textFaint, marginTop: 2 },
   reactionSummary: { fontSize: 13, marginTop: spacing.sm, color: colors.textMuted },
   reactionPicker: {
     flexDirection: "row",

@@ -17,6 +17,7 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 const TABS = [
+  { key: "analytics", label: "एनालिटिक्स" },
   { key: "posts", label: "पोस्ट" },
   { key: "reports", label: "पोस्ट रिपोर्ट्स" },
   { key: "commentReports", label: "टिप्पणी रिपोर्ट्स" },
@@ -48,10 +49,87 @@ export function FeedModerationPage() {
         ))}
       </div>
 
+      {tab === "analytics" && <AnalyticsSection />}
       {tab === "posts" && <PostsSection />}
       {tab === "reports" && <ReportsSection />}
       {tab === "commentReports" && <CommentReportsSection />}
       {tab === "verification" && <VerificationSection />}
+    </div>
+  );
+}
+
+// --- Analytics ---
+
+interface FeedAnalytics {
+  totalPosts: number;
+  totalUsers: number;
+  activeUsers: number;
+  totalLikes: number;
+  totalComments: number;
+  totalShares: number;
+  videoViews: number;
+  trendingHashtags: { tag: string; postsCount: number }[];
+  mostActiveUsers: { id: string; name: string; isVerified: boolean; verifiedLabel?: string | null; activityScore: number }[];
+}
+
+function AnalyticsSection() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["feed-analytics"],
+    queryFn: async () => (await apiClient.get<FeedAnalytics>("/feed-analytics")).data,
+  });
+
+  if (isLoading || !data) return <p className="text-sm text-slate-500">लोड हो रहा है…</p>;
+
+  const stats = [
+    { label: "कुल पोस्ट", value: data.totalPosts },
+    { label: "कुल उपयोगकर्ता", value: data.totalUsers },
+    { label: "सक्रिय उपयोगकर्ता (30 दिन)", value: data.activeUsers },
+    { label: "कुल लाइक/रिएक्शन", value: data.totalLikes },
+    { label: "कुल टिप्पणियां", value: data.totalComments },
+    { label: "कुल शेयर", value: data.totalShares },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {stats.map((s) => (
+          <Card key={s.label}>
+            <p className="text-2xl font-bold text-brand-navy">{s.value}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">🔥 ट्रेंडिंग हैशटैग</h2>
+          {data.trendingHashtags.length === 0 && <p className="text-sm text-slate-500">अभी कोई हैशटैग नहीं है।</p>}
+          <ul className="flex flex-col gap-2">
+            {data.trendingHashtags.map((h) => (
+              <li key={h.tag} className="flex justify-between text-sm">
+                <span className="text-slate-600 dark:text-slate-300">#{h.tag}</span>
+                <span className="font-medium text-slate-800 dark:text-slate-100">{h.postsCount}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">सर्वाधिक सक्रिय उपयोगकर्ता</h2>
+          {data.mostActiveUsers.length === 0 && <p className="text-sm text-slate-500">अभी कोई गतिविधि नहीं है।</p>}
+          <ul className="flex flex-col gap-2">
+            {data.mostActiveUsers.map((u) => (
+              <li key={u.id} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  {u.name}
+                  {u.isVerified && <Badge>✓ {u.verifiedLabel ?? "सत्यापित"}</Badge>}
+                </span>
+                <span className="font-medium text-slate-800 dark:text-slate-100">{u.activityScore}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
     </div>
   );
 }

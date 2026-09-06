@@ -12,8 +12,19 @@ export const createPostSchema = z.object({
   // posts are created via multipart/form-data (to support image upload), which can't carry
   // a real array field.
   visibleToPhones: z.string().optional(),
+  locationTag: z.string().max(100).optional(),
+  // Poll fields — sent as a plain question string plus a comma-separated options string
+  // (same multipart-form-data limitation as visibleToPhones above). Only verified accounts
+  // may attach a poll to their post.
+  pollQuestion: z.string().min(3).max(300).optional(),
+  pollOptions: z.string().optional(),
 });
 export type CreatePostInput = z.infer<typeof createPostSchema>;
+
+export const votePollSchema = z.object({
+  optionId: z.string().uuid(),
+});
+export type VotePollInput = z.infer<typeof votePollSchema>;
 
 export const reactToPostSchema = z.object({
   type: z.nativeEnum(ReactionType),

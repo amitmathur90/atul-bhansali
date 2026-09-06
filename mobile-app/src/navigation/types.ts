@@ -24,6 +24,7 @@ export type FeedStackParamList = {
   PostComments: { postId: string };
   UserProfile: { citizenId: string };
   HashtagPosts: { tag: string };
+  Search: undefined;
 };
 
 export type MyTicketsStackParamList = {

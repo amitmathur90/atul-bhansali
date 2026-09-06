@@ -32,6 +32,7 @@ interface Profile {
   followersCount: number;
   followingCount: number;
   postsCount: number;
+  badges: { key: string; emoji: string; label: string }[];
 }
 
 interface Analytics {
@@ -158,6 +159,18 @@ export function UserProfileScreen({ route, navigation }: Props) {
         </View>
         {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
         {profile.city && <Text style={styles.location}>📍 {profile.city}</Text>}
+
+        {!!profile.badges?.length && (
+          <View style={styles.badgeRow}>
+            {profile.badges.map((b) => (
+              <View key={b.key} style={styles.badgeChip}>
+                <Text style={styles.badgeChipText}>
+                  {b.emoji} {b.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -322,6 +335,9 @@ const styles = StyleSheet.create({
   verifiedText: { fontSize: 11, color: colors.info, fontWeight: "600" },
   bio: { fontSize: 13, color: colors.textMuted, marginTop: spacing.sm, textAlign: "center" },
   location: { fontSize: 12, color: colors.textFaint, marginTop: 4 },
+  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm, justifyContent: "center" },
+  badgeChip: { backgroundColor: `${colors.navy}15`, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4 },
+  badgeChipText: { fontSize: 11, fontWeight: "600", color: colors.navy },
   statsRow: { flexDirection: "row", gap: spacing.xxl, marginTop: spacing.lg },
   statItem: { alignItems: "center" },
   statValue: { fontSize: 16, fontWeight: "700", color: colors.text },

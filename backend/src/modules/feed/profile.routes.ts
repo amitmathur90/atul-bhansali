@@ -9,6 +9,27 @@ import { storageProvider } from "../../storage/storage.factory";
 
 export const profileRouter = Router();
 
+// Badges are computed on the fly from simple activity thresholds rather than stored/awarded
+// records — keeps the "badge" concept honest (it always reflects current activity) without
+// needing a background job to grant/revoke them as thresholds are crossed.
+function computeBadges(stats: {
+  postsCount: number;
+  commentsCount: number;
+  reactionsReceived: number;
+  followersCount: number;
+}) {
+  const badges: { key: string; emoji: string; label: string }[] = [];
+  if (stats.postsCount >= 5) badges.push({ key: "ACTIVE_CITIZEN", emoji: "🏆", label: "Active Citizen" });
+  if (stats.postsCount + stats.commentsCount >= 20) {
+    badges.push({ key: "COMMUNITY_CONTRIBUTOR", emoji: "⭐", label: "Community Contributor" });
+  }
+  if (stats.postsCount >= 10) badges.push({ key: "LOCAL_REPORTER", emoji: "📢", label: "Local Reporter" });
+  if (stats.reactionsReceived >= 50 || stats.followersCount >= 20) {
+    badges.push({ key: "TOP_CONTRIBUTOR", emoji: "🔥", label: "Top Contributor" });
+  }
+  return badges;
+}
+
 profileRouter.get(
   "/me/analytics",
   requireAuth,
@@ -73,10 +94,12 @@ profileRouter.get(
     const citizen = await prisma.citizen.findUnique({ where: { id: req.params.citizenId } });
     if (!citizen) throw new AppError(404, "NOT_FOUND", "User not found");
 
-    const [followersCount, followingCount, postsCount] = await Promise.all([
+    const [followersCount, followingCount, postsCount, commentsCount, reactionsReceived] = await Promise.all([
       prisma.follow.count({ where: { followingId: citizen.id } }),
       prisma.follow.count({ where: { followerId: citizen.id } }),
       prisma.post.count({ where: { authorId: citizen.id, isHidden: false } }),
+      prisma.postComment.count({ where: { citizenId: citizen.id } }),
+      prisma.postLike.count({ where: { post: { authorId: citizen.id } } }),
     ]);
     res.json({
       id: citizen.id,
@@ -89,6 +112,7 @@ profileRouter.get(
       followersCount,
       followingCount,
       postsCount,
+      badges: computeBadges({ postsCount, commentsCount, reactionsReceived, followersCount }),
     });
   }),
 );
