@@ -15,6 +15,7 @@ interface StaffMember {
   name: string;
   username: string;
   email: string | null;
+  phone: string | null;
   role: string;
   designation: string | null;
   isActive: boolean;
@@ -27,6 +28,7 @@ export function StaffPage() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<string>(StaffRole.STAFF);
   const [designation, setDesignation] = useState("");
@@ -45,6 +47,7 @@ export function StaffPage() {
           name,
           username,
           email: email || undefined,
+          phone: phone || undefined,
           password,
           role,
           designation: designation || undefined,
@@ -54,6 +57,7 @@ export function StaffPage() {
       setName("");
       setUsername("");
       setEmail("");
+      setPhone("");
       setPassword("");
       setDesignation("");
       setError(null);
@@ -73,7 +77,7 @@ export function StaffPage() {
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Create staff</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
           <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
           <Input
@@ -81,6 +85,12 @@ export function StaffPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            placeholder="Phone (optional)"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            maxLength={10}
           />
           <Input
             placeholder="Password"
@@ -174,7 +184,8 @@ function StaffRow({
           </p>
           <p className="text-xs text-slate-500">
             {staff.username}
-            {staff.email ? ` · ${staff.email}` : ""} · {staff.role}{" "}
+            {staff.email ? ` · ${staff.email}` : ""}
+            {staff.phone ? ` · ${staff.phone}` : ""} · {staff.role}{" "}
             {staff.designation ? `· ${staff.designation}` : ""}
           </p>
         </button>
