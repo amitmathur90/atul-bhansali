@@ -4,11 +4,13 @@ import { ActivityIndicator, View } from "react-native";
 import { useOfflineSync } from "../hooks/useOfflineSync";
 import { registerForPushNotifications } from "../lib/notifications";
 import { useAuthStore } from "../store/authStore";
+import { AdminTabs } from "./AdminTabs";
 import { AuthStack } from "./AuthStack";
 import { MainTabs } from "./MainTabs";
 
 export function RootNavigator() {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const ownerType = useAuthStore((s) => s.ownerType);
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
   useOfflineSync();
@@ -27,5 +29,9 @@ export function RootNavigator() {
     );
   }
 
-  return <NavigationContainer>{accessToken ? <MainTabs /> : <AuthStack />}</NavigationContainer>;
+  return (
+    <NavigationContainer>
+      {accessToken ? ownerType === "STAFF" ? <AdminTabs /> : <MainTabs /> : <AuthStack />}
+    </NavigationContainer>
+  );
 }

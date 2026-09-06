@@ -81,6 +81,10 @@ export function PhoneEntryScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.button} onPress={handleContinue} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>OTP भेजें</Text>}
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.staffLink} onPress={() => navigation.navigate("StaffLogin")}>
+            <Text style={styles.staffLinkText}>Staff / Admin Login</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -121,4 +125,6 @@ const styles = StyleSheet.create({
   error: { color: "#dc2626", marginTop: 8, fontSize: 13 },
   button: { backgroundColor: "#F5821F", borderRadius: 8, paddingVertical: 14, alignItems: "center", marginTop: 20 },
   buttonText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  staffLink: { alignItems: "center", marginTop: 20 },
+  staffLinkText: { color: "#666", fontSize: 13, fontWeight: "600", textDecorationLine: "underline" },
 });

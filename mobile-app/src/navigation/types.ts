@@ -3,6 +3,7 @@ import type { NavigatorScreenParams } from "@react-navigation/native";
 export type AuthStackParamList = {
   PhoneEntry: undefined;
   OtpVerify: { phone: string; purpose: "REGISTRATION" | "LOGIN"; devOtp?: string };
+  StaffLogin: undefined;
 };
 
 export type HomeStackParamList = {
@@ -53,4 +54,33 @@ export type MainTabParamList = {
   CampaignTab: NavigatorScreenParams<CampaignStackParamList>;
   FeedTab: NavigatorScreenParams<FeedStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
+};
+
+export type AdminDashboardStackParamList = {
+  AdminDashboard: undefined;
+};
+
+export type AdminComplaintsStackParamList = {
+  AdminComplaintsList: undefined;
+  AdminComplaintDetail: { id: string };
+};
+
+export type AdminMoreStackParamList = {
+  AdminMoreMenu: undefined;
+  AdminWards: undefined;
+  AdminDepartments: undefined;
+  AdminCategories: undefined;
+  AdminStaff: undefined;
+  AdminAnnouncements: undefined;
+  AdminFeedModeration: undefined;
+  AdminFeedAnalytics: undefined;
+  AdminSettings: undefined;
+  AdminReports: undefined;
+  AdminCampaign: undefined;
+};
+
+export type AdminTabParamList = {
+  AdminDashboardTab: NavigatorScreenParams<AdminDashboardStackParamList>;
+  AdminComplaintsTab: NavigatorScreenParams<AdminComplaintsStackParamList>;
+  AdminMoreTab: NavigatorScreenParams<AdminMoreStackParamList>;
 };
