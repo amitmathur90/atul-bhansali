@@ -69,7 +69,7 @@ export async function streamPdfReport(period: ReportPeriod, res: Response) {
   const doc = new PDFDocument({ margin: 40 });
   doc.pipe(res);
 
-  doc.fontSize(16).text("Atul Bhansali Citizen Connect — Complaint Report", { align: "center" });
+  doc.fontSize(16).text("Citizen Connection — Complaint Report", { align: "center" });
   doc.moveDown(0.5);
   doc
     .fontSize(10)

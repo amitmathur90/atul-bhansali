@@ -38,7 +38,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-navy to-brand-navy-dark px-4">
       <Card className="w-full max-w-sm border-t-4 border-t-brand-saffron">
         <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-          Atul Bhansali Citizen Connect
+          Citizen Connection
         </h1>
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Staff / MLA / Admin login</p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
