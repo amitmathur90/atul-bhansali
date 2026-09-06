@@ -2,17 +2,23 @@ import type { NotificationType, RecipientType } from "@abc/shared";
 import { prisma } from "../../lib/prisma";
 import { pushProvider } from "./push";
 
+interface RelatedIds {
+  relatedComplaintId?: string;
+  relatedAnnouncementId?: string;
+  relatedAppointmentId?: string;
+  relatedCampaignPostId?: string;
+  relatedCampaignEventId?: string;
+  relatedPostId?: string;
+  [key: string]: unknown;
+}
+
 export async function notifyOwner(
   recipientType: RecipientType,
   recipientId: string,
   title: string,
   body: string,
   type: NotificationType,
-  extra?: {
-    relatedComplaintId?: string;
-    relatedAnnouncementId?: string;
-    relatedAppointmentId?: string;
-  },
+  extra?: RelatedIds,
 ) {
   await prisma.notification.create({
     data: { recipientType, recipientId, title, body, type, ...extra },
@@ -35,16 +41,7 @@ export async function notifyOwner(
 // Broadcasts a notification to every non-blocked citizen — used when publishing content
 // meant for all citizens (announcements, campaign posts/events), as opposed to notifyOwner
 // above which targets one specific recipient (e.g. a complaint's citizen).
-export async function notifyAllCitizens(
-  title: string,
-  body: string,
-  type: NotificationType,
-  extra?: {
-    relatedAnnouncementId?: string;
-    relatedCampaignPostId?: string;
-    relatedCampaignEventId?: string;
-  },
-) {
+export async function notifyAllCitizens(title: string, body: string, type: NotificationType, extra?: RelatedIds) {
   const citizens = await prisma.citizen.findMany({ where: { isBlocked: false }, select: { id: true } });
   if (citizens.length === 0) return;
 

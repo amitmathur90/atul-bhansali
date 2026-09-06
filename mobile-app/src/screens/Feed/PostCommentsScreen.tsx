@@ -14,6 +14,7 @@ import {
   View,
   StyleSheet,
 } from "react-native";
+import { ReportModal } from "../../components/ReportModal";
 import { apiClient } from "../../lib/api-client";
 import type { FeedStackParamList } from "../../navigation/types";
 import { useAuthStore } from "../../store/authStore";
@@ -47,7 +48,6 @@ export function PostCommentsScreen({ route }: Props) {
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reportingId, setReportingId] = useState<string | null>(null);
-  const [reportReason, setReportReason] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["post-comments", postId],
@@ -86,10 +86,10 @@ export function PostCommentsScreen({ route }: Props) {
   });
 
   const reportMutation = useMutation({
-    mutationFn: async () => apiClient.post(`/posts/${postId}/comments/${reportingId}/report`, { reason: reportReason }),
+    mutationFn: async ({ reasonType, details }: { reasonType: string; details?: string }) =>
+      apiClient.post(`/posts/${postId}/comments/${reportingId}/report`, { reasonType, details }),
     onSuccess: () => {
       setReportingId(null);
-      setReportReason("");
       Alert.alert("धन्यवाद", "आपकी रिपोर्ट भेज दी गई है।");
     },
   });
@@ -214,30 +214,12 @@ export function PostCommentsScreen({ route }: Props) {
       </View>
 
       {reportingId && (
-        <View style={styles.reportOverlay}>
-          <View style={styles.reportModal}>
-            <Text style={styles.reportTitle}>टिप्पणी रिपोर्ट करें</Text>
-            <TextInput
-              style={styles.reportInput}
-              placeholder="कारण बताएं…"
-              value={reportReason}
-              onChangeText={setReportReason}
-              multiline
-            />
-            <View style={styles.reportActions}>
-              <TouchableOpacity onPress={() => setReportingId(null)}>
-                <Text style={styles.replyAction}>रद्द करें</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                disabled={!reportReason.trim()}
-                onPress={() => reportMutation.mutate()}
-                style={styles.reportSubmit}
-              >
-                <Text style={styles.reportSubmitText}>भेजें</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <ReportModal
+          title="टिप्पणी रिपोर्ट करें"
+          submitting={reportMutation.isPending}
+          onCancel={() => setReportingId(null)}
+          onSubmit={(reasonType, details) => reportMutation.mutate({ reasonType, details })}
+        />
       )}
     </KeyboardAvoidingView>
   );
@@ -287,29 +269,4 @@ const styles = StyleSheet.create({
   },
   sendButton: { backgroundColor: colors.navy, borderRadius: radius.full, width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   sendButtonDisabled: { opacity: 0.5 },
-  reportOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-  },
-  reportModal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, width: "100%" },
-  reportTitle: { fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: spacing.sm },
-  reportInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    minHeight: 70,
-    textAlignVertical: "top",
-    fontSize: 13,
-  },
-  reportActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.lg, marginTop: spacing.md },
-  reportSubmit: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: 6 },
-  reportSubmitText: { color: "#fff", fontWeight: "700" },
 });

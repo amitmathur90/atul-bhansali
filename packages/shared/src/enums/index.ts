@@ -78,6 +78,13 @@ export const NotificationType = {
   CAMPAIGN_POST: "CAMPAIGN_POST",
   CAMPAIGN_EVENT: "CAMPAIGN_EVENT",
   NEW_POST: "NEW_POST",
+  POST_LIKE: "POST_LIKE",
+  POST_COMMENT: "POST_COMMENT",
+  COMMENT_REPLY: "COMMENT_REPLY",
+  NEW_FOLLOWER: "NEW_FOLLOWER",
+  POST_SHARE: "POST_SHARE",
+  REPORT_UPDATE: "REPORT_UPDATE",
+  WARNING: "WARNING",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 
@@ -167,6 +174,24 @@ export const ReactionType = {
   CONCERN: "CONCERN",
 } as const;
 export type ReactionType = (typeof ReactionType)[keyof typeof ReactionType];
+
+export const PostVisibility = {
+  PUBLIC: "PUBLIC",
+  FOLLOWERS_ONLY: "FOLLOWERS_ONLY",
+  PRIVATE: "PRIVATE",
+} as const;
+export type PostVisibility = (typeof PostVisibility)[keyof typeof PostVisibility];
+
+export const ReportReason = {
+  SPAM: "SPAM",
+  FAKE_INFORMATION: "FAKE_INFORMATION",
+  ABUSE: "ABUSE",
+  HATE_HARASSMENT: "HATE_HARASSMENT",
+  INAPPROPRIATE_CONTENT: "INAPPROPRIATE_CONTENT",
+  VIOLENCE: "VIOLENCE",
+  OTHER: "OTHER",
+} as const;
+export type ReportReason = (typeof ReportReason)[keyof typeof ReportReason];
 
 // Allowed status transitions for the complaint workflow.
 export const COMPLAINT_STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {

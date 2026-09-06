@@ -20,10 +20,12 @@ import { emergencyContactsRouter } from "./modules/emergency-contacts/emergency-
 import { feedbackRouter } from "./modules/feedback/feedback.routes";
 import { commentsRouter } from "./modules/feed/comments.routes";
 import { followsRouter } from "./modules/feed/follows.routes";
+import { hashtagsRouter } from "./modules/feed/hashtags.routes";
 import { postsRouter } from "./modules/feed/posts.routes";
 import { profileRouter } from "./modules/feed/profile.routes";
 import { commentReportsAdminRouter, postReportCreateRouter, postReportsAdminRouter } from "./modules/feed/reports.routes";
 import { verificationRouter } from "./modules/feed/verification.routes";
+import { warningsRouter } from "./modules/feed/warnings.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 import { settingsRouter } from "./modules/settings/settings.routes";
@@ -57,6 +59,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/citizens", followsRouter);
 app.use("/api/citizens", profileRouter);
+app.use("/api/citizens/:citizenId/warnings", warningsRouter);
 app.use("/api/citizens", citizensRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/appointments", appointmentsRouter);
@@ -70,6 +73,7 @@ app.use("/api/posts/:postId/report", postReportCreateRouter);
 app.use("/api/post-reports", postReportsAdminRouter);
 app.use("/api/comment-reports", commentReportsAdminRouter);
 app.use("/api/posts", postsRouter);
+app.use("/api/hashtags", hashtagsRouter);
 app.use("/api/verification-requests", verificationRouter);
 
 app.use((_req, res) => {

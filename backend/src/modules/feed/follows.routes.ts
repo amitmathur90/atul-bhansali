@@ -1,9 +1,10 @@
-import { OwnerType } from "@abc/shared";
+import { NotificationType, OwnerType } from "@abc/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
 import { optionalAuth, requireAuth } from "../../middleware/auth.middleware";
+import { notifyOwner } from "../notifications/notifications.service";
 
 export const followsRouter = Router();
 
@@ -44,6 +45,14 @@ followsRouter.post(
       await prisma.follow.delete({ where: { id: existing.id } });
     } else {
       await prisma.follow.create({ data: { followerId, followingId } });
+      const follower = await prisma.citizen.findUnique({ where: { id: followerId }, select: { name: true } });
+      await notifyOwner(
+        "CITIZEN",
+        followingId,
+        "आपका एक नया फॉलोअर है",
+        `${follower?.name ?? "किसी"} ने आपको फॉलो किया।`,
+        NotificationType.NEW_FOLLOWER,
+      );
     }
     const followersCount = await prisma.follow.count({ where: { followingId } });
     res.json({ followed: !existing, followersCount });

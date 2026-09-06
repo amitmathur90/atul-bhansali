@@ -1,13 +1,22 @@
-import { createPostSchema, NotificationType, OwnerType, ReactionType, StaffRole, updatePostSchema } from "@abc/shared";
+import {
+  createPostSchema,
+  NotificationType,
+  OwnerType,
+  PostVisibility,
+  ReactionType,
+  StaffRole,
+  updatePostSchema,
+} from "@abc/shared";
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
+import { extractHashtags } from "../../lib/hashtags";
 import { prisma } from "../../lib/prisma";
 import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { upload } from "../../middleware/upload.middleware";
 import { storageProvider } from "../../storage/storage.factory";
-import { notifyFollowers } from "../notifications/notifications.service";
+import { notifyFollowers, notifyOwner } from "../notifications/notifications.service";
 
 export const postsRouter = Router();
 
@@ -51,14 +60,33 @@ async function serializePosts<T extends PostWithCounts>(posts: T[], citizenId?: 
   });
 }
 
+// A viewer sees: public posts, their own posts (any visibility), followers-only posts from
+// people they follow, and private posts they were explicitly given access to.
+async function visibilityFilter(citizenId?: string) {
+  if (!citizenId) return { visibility: PostVisibility.PUBLIC };
+
+  const following = await prisma.follow.findMany({ where: { followerId: citizenId }, select: { followingId: true } });
+  const followingIds = following.map((f) => f.followingId);
+
+  return {
+    OR: [
+      { visibility: PostVisibility.PUBLIC },
+      { authorId: citizenId },
+      { visibility: PostVisibility.FOLLOWERS_ONLY, authorId: { in: followingIds } },
+      { visibility: PostVisibility.PRIVATE, visibleTo: { some: { citizenId } } },
+    ],
+  };
+}
+
 postsRouter.get(
   "/",
   optionalAuth,
   asyncHandler(async (req, res) => {
     const { authorId, page, pageSize } = listQuerySchema.parse(req.query);
     const isStaff = req.user?.ownerType === OwnerType.STAFF;
+    const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
     const where = {
-      ...(isStaff ? {} : { isHidden: false }),
+      ...(isStaff ? {} : { isHidden: false, ...(await visibilityFilter(citizenId)) }),
       ...(authorId ? { authorId } : {}),
     };
     const [posts, total] = await Promise.all([
@@ -75,7 +103,6 @@ postsRouter.get(
       }),
       prisma.post.count({ where }),
     ]);
-    const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
     res.json({ items: await serializePosts(posts, citizenId), total, page, pageSize });
   }),
 );
@@ -89,13 +116,29 @@ postsRouter.get(
       include: {
         author: { select: AUTHOR_SELECT },
         sharedPost: { include: SHARED_POST_INCLUDE },
+        visibleTo: { select: { citizenId: true } },
         _count: { select: { likes: true, comments: true } },
       },
     });
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
     const isStaff = req.user?.ownerType === OwnerType.STAFF;
-    if (!isStaff && post.isHidden) throw new AppError(404, "NOT_FOUND", "Post not found");
     const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
+    if (!isStaff && post.isHidden) throw new AppError(404, "NOT_FOUND", "Post not found");
+
+    if (!isStaff && post.authorId !== citizenId) {
+      if (post.visibility === PostVisibility.FOLLOWERS_ONLY) {
+        const follows = citizenId
+          ? await prisma.follow.findUnique({
+              where: { followerId_followingId: { followerId: citizenId, followingId: post.authorId } },
+            })
+          : null;
+        if (!follows) throw new AppError(404, "NOT_FOUND", "Post not found");
+      } else if (post.visibility === PostVisibility.PRIVATE) {
+        if (!citizenId || !post.visibleTo.some((v) => v.citizenId === citizenId)) {
+          throw new AppError(404, "NOT_FOUND", "Post not found");
+        }
+      }
+    }
     const [serialized] = await serializePosts([post], citizenId);
     res.json(serialized);
   }),
@@ -127,21 +170,60 @@ postsRouter.post(
       const original = await prisma.post.findUnique({ where: { id: input.sharedPostId } });
       if (!original || original.isHidden) throw new AppError(404, "NOT_FOUND", "Shared post not found");
     }
+    if (input.visibility === PostVisibility.PRIVATE && !input.visibleToPhones) {
+      throw new AppError(400, "MISSING_VIEWERS", "Private posts need at least one selected viewer");
+    }
+
+    const hashtags = extractHashtags(input.content);
+    const { visibleToPhones, ...postFields } = input;
+
+    let viewerIds: string[] = [];
+    if (visibleToPhones) {
+      const phones = visibleToPhones.split(",").map((p) => p.trim()).filter(Boolean);
+      const viewers = await prisma.citizen.findMany({ where: { phone: { in: phones } }, select: { id: true } });
+      viewerIds = viewers.map((v) => v.id);
+      if (viewerIds.length === 0) {
+        throw new AppError(400, "NO_MATCHING_USERS", "None of the given phone numbers match a registered citizen");
+      }
+    }
+
     const post = await prisma.post.create({
-      data: { ...input, authorId: req.user!.sub },
+      data: {
+        ...postFields,
+        authorId: req.user!.sub,
+        hashtags: {
+          connectOrCreate: hashtags.map((tag) => ({ where: { tag }, create: { tag } })),
+        },
+        ...(viewerIds.length > 0
+          ? { visibleTo: { create: viewerIds.map((citizenId) => ({ citizenId })) } }
+          : {}),
+      },
       include: {
         author: { select: AUTHOR_SELECT },
         sharedPost: { include: SHARED_POST_INCLUDE },
         _count: { select: { likes: true, comments: true } },
       },
     });
+
     const author = await prisma.citizen.findUnique({ where: { id: req.user!.sub }, select: { name: true } });
-    await notifyFollowers(
-      req.user!.sub,
-      `${author?.name ?? "एक उपयोगकर्ता"} ने नई पोस्ट साझा की`,
-      post.content.slice(0, 140),
-      NotificationType.NEW_POST,
-    );
+    if (post.visibility === PostVisibility.PUBLIC) {
+      await notifyFollowers(
+        req.user!.sub,
+        `${author?.name ?? "एक उपयोगकर्ता"} ने नई पोस्ट साझा की`,
+        post.content.slice(0, 140),
+        NotificationType.NEW_POST,
+      );
+    }
+    if (post.sharedPostId && post.sharedPost && post.sharedPost.author.id !== req.user!.sub) {
+      await notifyOwner(
+        "CITIZEN",
+        post.sharedPost.author.id,
+        `${author?.name ?? "किसी ने"} ने आपकी पोस्ट शेयर की`,
+        post.content.slice(0, 140),
+        NotificationType.POST_SHARE,
+        { relatedPostId: post.sharedPostId },
+      );
+    }
     const [serialized] = await serializePosts([post], req.user!.sub);
     res.status(201).json(serialized);
   }),
@@ -155,7 +237,20 @@ postsRouter.patch(
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
     if (post.authorId !== req.user!.sub) throw new AppError(403, "FORBIDDEN", "You can only edit your own posts");
     const input = updatePostSchema.parse(req.body);
-    const updated = await prisma.post.update({ where: { id: req.params.id }, data: input });
+    const updated = await prisma.post.update({
+      where: { id: req.params.id },
+      data: {
+        ...input,
+        ...(input.content
+          ? {
+              hashtags: {
+                set: [],
+                connectOrCreate: extractHashtags(input.content).map((tag) => ({ where: { tag }, create: { tag } })),
+              },
+            }
+          : {}),
+      },
+    });
     res.json(updated);
   }),
 );
@@ -189,6 +284,9 @@ postsRouter.post(
     const { type } = reactSchema.parse(req.body);
     const postId = req.params.id;
     const citizenId = req.user!.sub;
+    const post = await prisma.post.findUnique({ where: { id: postId } });
+    if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
+
     const existing = await prisma.postLike.findUnique({ where: { postId_citizenId: { postId, citizenId } } });
     let myReaction: string | null = type;
     if (existing && existing.type === type) {
@@ -198,6 +296,17 @@ postsRouter.post(
       await prisma.postLike.update({ where: { id: existing.id }, data: { type } });
     } else {
       await prisma.postLike.create({ data: { postId, citizenId, type } });
+    }
+    if (myReaction && post.authorId !== citizenId) {
+      const reactor = await prisma.citizen.findUnique({ where: { id: citizenId }, select: { name: true } });
+      await notifyOwner(
+        "CITIZEN",
+        post.authorId,
+        `${reactor?.name ?? "किसी ने"} ने आपकी पोस्ट पर प्रतिक्रिया दी`,
+        post.content.slice(0, 140),
+        NotificationType.POST_LIKE,
+        { relatedPostId: postId },
+      );
     }
     const allReactions = await prisma.postLike.findMany({ where: { postId }, select: { type: true } });
     const reactions = { ...EMPTY_REACTIONS };

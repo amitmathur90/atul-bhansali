@@ -18,6 +18,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { HashtagText } from "../../components/HashtagText";
+import { ReportModal } from "../../components/ReportModal";
 import { apiClient } from "../../lib/api-client";
 import type { FeedStackParamList } from "../../navigation/types";
 import { useAuthStore } from "../../store/authStore";
@@ -33,6 +35,11 @@ const REACTION_META: Record<string, { emoji: string; label: string }> = {
   CONCERN: { emoji: "😔", label: "चिंता" },
 };
 const REACTION_ORDER = ["LIKE", "SUPPORT", "APPRECIATED", "WOW", "CONCERN"];
+const VISIBILITY_META: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  PUBLIC: { label: "सार्वजनिक", icon: "globe-outline" },
+  FOLLOWERS_ONLY: { label: "केवल फॉलोअर्स", icon: "people-outline" },
+  PRIVATE: { label: "निजी", icon: "lock-closed-outline" },
+};
 
 interface FeedAuthor {
   id: string;
@@ -58,16 +65,29 @@ interface FeedPost {
   sharedPost?: (Pick<FeedPost, "id" | "content" | "mediaUrl" | "mediaType"> & { author: FeedAuthor }) | null;
 }
 
+interface TrendingHashtag {
+  tag: string;
+  postsCount: number;
+}
+
 export function FeedListScreen({ navigation }: Props) {
   const citizen = useAuthStore((s) => s.citizen);
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [image, setImage] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [pickerForPostId, setPickerForPostId] = useState<string | null>(null);
+  const [visibility, setVisibility] = useState<"PUBLIC" | "FOLLOWERS_ONLY" | "PRIVATE">("PUBLIC");
+  const [visibilityMenuOpen, setVisibilityMenuOpen] = useState(false);
+  const [privatePhones, setPrivatePhones] = useState("");
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["feed-posts"],
     queryFn: async () => (await apiClient.get<{ items: FeedPost[] }>("/posts")).data.items,
+  });
+
+  const { data: trending } = useQuery({
+    queryKey: ["hashtags-trending"],
+    queryFn: async () => (await apiClient.get<{ items: TrendingHashtag[] }>("/hashtags/trending")).data.items,
   });
 
   const createMutation = useMutation({
@@ -76,13 +96,20 @@ export function FeedListScreen({ navigation }: Props) {
       form.append("content", content || "इस पोस्ट को शेयर किया");
       if (image) form.append("image", image as unknown as Blob);
       if (sharedPostId) form.append("sharedPostId", sharedPostId);
+      if (!sharedPostId) {
+        form.append("visibility", visibility);
+        if (visibility === "PRIVATE") form.append("visibleToPhones", privatePhones);
+      }
       return (await apiClient.post("/posts", form)).data;
     },
     onSuccess: () => {
       setContent("");
       setImage(null);
+      setVisibility("PUBLIC");
+      setPrivatePhones("");
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
     },
+    onError: () => Alert.alert("पोस्ट नहीं हो सकी", "कृपया विवरण जांचें और पुनः प्रयास करें।"),
   });
 
   const reactMutation = useMutation({
@@ -110,12 +137,11 @@ export function FeedListScreen({ navigation }: Props) {
   }
 
   const [reportingId, setReportingId] = useState<string | null>(null);
-  const [reportReason, setReportReason] = useState("");
   const reportMutation = useMutation({
-    mutationFn: async () => apiClient.post(`/posts/${reportingId}/report`, { reason: reportReason }),
+    mutationFn: async ({ reasonType, details }: { reasonType: string; details?: string }) =>
+      apiClient.post(`/posts/${reportingId}/report`, { reasonType, details }),
     onSuccess: () => {
       setReportingId(null);
-      setReportReason("");
       Alert.alert("धन्यवाद", "आपकी रिपोर्ट भेज दी गई है।");
     },
   });
@@ -134,6 +160,10 @@ export function FeedListScreen({ navigation }: Props) {
       .join("  ");
   }
 
+  function goToHashtag(tag: string) {
+    navigation.navigate("HashtagPosts", { tag });
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -147,30 +177,77 @@ export function FeedListScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         ListHeaderComponent={
-          <View style={styles.composer}>
-            <TextInput
-              style={styles.composerInput}
-              placeholder="समुदाय के साथ कुछ साझा करें…"
-              value={content}
-              onChangeText={setContent}
-              multiline
-            />
-            {image && <Image source={{ uri: image.uri }} style={styles.composerImage} />}
-            <View style={styles.composerRow}>
-              <TouchableOpacity onPress={handlePickImage} style={styles.composerImageButton}>
-                <Ionicons name="image-outline" size={20} color={colors.navy} />
+          <View>
+            {!!trending?.length && (
+              <View style={styles.trendingCard}>
+                <Text style={styles.trendingTitle}>🔥 Trending Now</Text>
+                <View style={styles.trendingChipRow}>
+                  {trending.map((h) => (
+                    <TouchableOpacity key={h.tag} style={styles.trendingChip} onPress={() => goToHashtag(h.tag)}>
+                      <Text style={styles.trendingChipText}>#{h.tag}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            <View style={styles.composer}>
+              <TextInput
+                style={styles.composerInput}
+                placeholder="समुदाय के साथ कुछ साझा करें… (#हैशटैग जोड़ें)"
+                value={content}
+                onChangeText={setContent}
+                multiline
+              />
+              {image && <Image source={{ uri: image.uri }} style={styles.composerImage} />}
+
+              <TouchableOpacity style={styles.visibilityButton} onPress={() => setVisibilityMenuOpen((o) => !o)}>
+                <Ionicons name={VISIBILITY_META[visibility].icon} size={14} color={colors.navy} />
+                <Text style={styles.visibilityButtonText}>{VISIBILITY_META[visibility].label}</Text>
+                <Ionicons name="chevron-down" size={12} color={colors.navy} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.postButton, !content.trim() && styles.postButtonDisabled]}
-                disabled={!content.trim() || createMutation.isPending}
-                onPress={() => createMutation.mutate(undefined)}
-              >
-                {createMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.postButtonText}>पोस्ट करें</Text>
-                )}
-              </TouchableOpacity>
+              {visibilityMenuOpen && (
+                <View style={styles.visibilityMenu}>
+                  {(["PUBLIC", "FOLLOWERS_ONLY", "PRIVATE"] as const).map((v) => (
+                    <TouchableOpacity
+                      key={v}
+                      style={styles.visibilityMenuItem}
+                      onPress={() => {
+                        setVisibility(v);
+                        setVisibilityMenuOpen(false);
+                      }}
+                    >
+                      <Ionicons name={VISIBILITY_META[v].icon} size={14} color={colors.text} />
+                      <Text style={styles.visibilityMenuText}>{VISIBILITY_META[v].label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {visibility === "PRIVATE" && (
+                <TextInput
+                  style={styles.privateInput}
+                  placeholder="मोबाइल नंबर लिखें, कॉमा से अलग करें (जैसे 9876543210,9123456780)"
+                  value={privatePhones}
+                  onChangeText={setPrivatePhones}
+                />
+              )}
+
+              <View style={styles.composerRow}>
+                <TouchableOpacity onPress={handlePickImage} style={styles.composerImageButton}>
+                  <Ionicons name="image-outline" size={20} color={colors.navy} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.postButton, !content.trim() && styles.postButtonDisabled]}
+                  disabled={!content.trim() || createMutation.isPending}
+                  onPress={() => createMutation.mutate(undefined)}
+                >
+                  {createMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.postButtonText}>पोस्ट करें</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         }
@@ -214,7 +291,7 @@ export function FeedListScreen({ navigation }: Props) {
                 <FollowButton citizenId={item.author.id} />
               )}
             </View>
-            <Text style={styles.postContent}>{item.content}</Text>
+            <HashtagText content={item.content} style={styles.postContent} onHashtagPress={goToHashtag} />
             {item.mediaUrl && item.mediaType === "IMAGE" && (
               <Image source={{ uri: item.mediaUrl }} style={styles.postImage} />
             )}
@@ -285,30 +362,12 @@ export function FeedListScreen({ navigation }: Props) {
       />
 
       {reportingId && (
-        <View style={styles.reportOverlay}>
-          <View style={styles.reportModal}>
-            <Text style={styles.reportTitle}>पोस्ट रिपोर्ट करें</Text>
-            <TextInput
-              style={styles.reportInput}
-              placeholder="कारण बताएं…"
-              value={reportReason}
-              onChangeText={setReportReason}
-              multiline
-            />
-            <View style={styles.reportActions}>
-              <TouchableOpacity onPress={() => setReportingId(null)}>
-                <Text style={styles.reportCancel}>रद्द करें</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                disabled={!reportReason.trim()}
-                onPress={() => reportMutation.mutate()}
-                style={styles.reportSubmit}
-              >
-                <Text style={styles.reportSubmitText}>भेजें</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <ReportModal
+          title="पोस्ट रिपोर्ट करें"
+          submitting={reportMutation.isPending}
+          onCancel={() => setReportingId(null)}
+          onSubmit={(reasonType, details) => reportMutation.mutate({ reasonType, details })}
+        />
       )}
     </KeyboardAvoidingView>
   );
@@ -340,9 +399,39 @@ function FollowButton({ citizenId }: { citizenId: string }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl * 2 },
+  trendingCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, ...shadow.card },
+  trendingTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: spacing.sm },
+  trendingChipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  trendingChip: { backgroundColor: `${colors.navy}15`, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: 6 },
+  trendingChipText: { fontSize: 12, fontWeight: "600", color: colors.navy },
   composer: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, ...shadow.card },
   composerInput: { fontSize: 14, color: colors.text, minHeight: 50, textAlignVertical: "top" },
   composerImage: { width: "100%", height: 160, borderRadius: radius.md, marginTop: spacing.sm },
+  visibilityButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  visibilityButtonText: { fontSize: 11, color: colors.navy, fontWeight: "600" },
+  visibilityMenu: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, marginTop: spacing.xs },
+  visibilityMenuItem: { flexDirection: "row", alignItems: "center", gap: 6, padding: spacing.sm },
+  visibilityMenuText: { fontSize: 12, color: colors.text },
+  privateInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    fontSize: 12,
+    marginTop: spacing.xs,
+  },
   composerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.sm },
   composerImageButton: { padding: 6 },
   postButton: { backgroundColor: colors.navy, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 8 },
@@ -396,30 +485,4 @@ const styles = StyleSheet.create({
   },
   actionButton: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionText: { fontSize: 12, color: colors.textMuted, fontWeight: "600" },
-  reportOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-  },
-  reportModal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, width: "100%" },
-  reportTitle: { fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: spacing.sm },
-  reportInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    minHeight: 70,
-    textAlignVertical: "top",
-    fontSize: 13,
-  },
-  reportActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.lg, marginTop: spacing.md },
-  reportCancel: { color: colors.textMuted, fontWeight: "600" },
-  reportSubmit: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: 6 },
-  reportSubmitText: { color: "#fff", fontWeight: "700" },
 });

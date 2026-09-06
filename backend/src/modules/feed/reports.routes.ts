@@ -1,10 +1,13 @@
-import { createReportSchema, OwnerType, StaffRole } from "@abc/shared";
+import { createReportSchema, NotificationType, OwnerType, StaffRole } from "@abc/shared";
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
 import { requireAuth, requireRole } from "../../middleware/auth.middleware";
+import { notifyOwner } from "../notifications/notifications.service";
+
+const STATUS_LABELS_HI: Record<string, string> = { REVIEWED: "समीक्षा की गई", DISMISSED: "खारिज की गई" };
 
 // Mounted twice: at /api/posts/:postId/report (create) and /api/post-reports (admin review).
 export const postReportCreateRouter = Router({ mergeParams: true });
@@ -54,6 +57,14 @@ postReportsAdminRouter.patch(
   asyncHandler(async (req, res) => {
     const { status } = updateStatusSchema.parse(req.body);
     const report = await prisma.postReport.update({ where: { id: req.params.id }, data: { status } });
+    await notifyOwner(
+      "CITIZEN",
+      report.reporterId,
+      "आपकी रिपोर्ट अपडेट हुई",
+      `आपकी पोस्ट रिपोर्ट ${STATUS_LABELS_HI[status] ?? status} गई है।`,
+      NotificationType.REPORT_UPDATE,
+      { relatedPostId: report.postId },
+    );
     res.json(report);
   }),
 );
@@ -82,6 +93,13 @@ commentReportsAdminRouter.patch(
   asyncHandler(async (req, res) => {
     const { status } = updateStatusSchema.parse(req.body);
     const report = await prisma.commentReport.update({ where: { id: req.params.id }, data: { status } });
+    await notifyOwner(
+      "CITIZEN",
+      report.reporterId,
+      "आपकी रिपोर्ट अपडेट हुई",
+      `आपकी टिप्पणी रिपोर्ट ${STATUS_LABELS_HI[status] ?? status} गई है।`,
+      NotificationType.REPORT_UPDATE,
+    );
     res.json(report);
   }),
 );

@@ -90,6 +90,22 @@ enum ReactionType {
   CONCERN
 }
 
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS_ONLY
+  PRIVATE
+}
+
+enum ReportReason {
+  SPAM
+  FAKE_INFORMATION
+  ABUSE
+  HATE_HARASSMENT
+  INAPPROPRIATE_CONTENT
+  VIOLENCE
+  OTHER
+}
+
 enum DevProjectCategory {
   ROAD
   SCHOOL
@@ -123,6 +139,13 @@ enum NotificationType {
   CAMPAIGN_POST
   CAMPAIGN_EVENT
   NEW_POST
+  POST_LIKE
+  POST_COMMENT
+  COMMENT_REPLY
+  NEW_FOLLOWER
+  POST_SHARE
+  REPORT_UPDATE
+  WARNING
 }
 
 enum RecipientType {
@@ -224,6 +247,8 @@ model Citizen {
   following              Follow[]                @relation("Follower")
   commentLikes           CommentLike[]
   commentReports         CommentReport[]
+  visiblePosts           PostVisibleTo[]
+  warnings               UserWarning[]
 }
 
 model StaffMember {
@@ -246,6 +271,7 @@ model StaffMember {
   createdCampaignPosts          CampaignPost[]
   createdCampaignEvents         CampaignEvent[]
   reviewedVerifications         VerificationRequest[]
+  issuedWarnings                UserWarning[]
 }
 
 model StaffWardAssignment {
@@ -478,6 +504,7 @@ model Notification {
   relatedAppointmentId   String?
   relatedCampaignPostId  String?
   relatedCampaignEventId String?
+  relatedPostId          String?
   isRead                 Boolean          @default(false)
   pushStatus             String?
   createdAt              DateTime         @default(now())
@@ -595,27 +622,49 @@ model CampaignFeedback {
 // --- Citizen Connect Feed (social feed module) ---
 
 model Post {
-  id           String        @id @default(uuid())
+  id           String         @id @default(uuid())
   authorId     String
-  author       Citizen       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author       Citizen        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   content      String
-  mediaType    PostMediaType @default(NONE)
+  mediaType    PostMediaType  @default(NONE)
   mediaUrl     String?
-  isPinned     Boolean       @default(false)
-  isFeatured   Boolean       @default(false)
-  isHidden     Boolean       @default(false)
+  visibility   PostVisibility @default(PUBLIC)
+  isPinned     Boolean        @default(false)
+  isFeatured   Boolean        @default(false)
+  isHidden     Boolean        @default(false)
   sharedPostId String?
-  sharedPost   Post?         @relation("PostShares", fields: [sharedPostId], references: [id], onDelete: SetNull)
-  shares       Post[]        @relation("PostShares")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  sharedPost   Post?          @relation("PostShares", fields: [sharedPostId], references: [id], onDelete: SetNull)
+  shares       Post[]         @relation("PostShares")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
-  likes    PostLike[]
-  comments PostComment[]
-  reports  PostReport[]
+  likes     PostLike[]
+  comments  PostComment[]
+  reports   PostReport[]
+  hashtags  Hashtag[]
+  visibleTo PostVisibleTo[]
 
   @@index([isHidden, createdAt])
   @@index([authorId])
+}
+
+model PostVisibleTo {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  citizenId String
+  citizen   Citizen  @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, citizenId])
+}
+
+model Hashtag {
+  id        String   @id @default(uuid())
+  tag       String   @unique
+  createdAt DateTime @default(now())
+
+  posts Post[]
 }
 
 model PostLike {
@@ -666,7 +715,8 @@ model CommentReport {
   comment    PostComment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   reporterId String
   reporter   Citizen      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-  reason     String
+  reasonType ReportReason @default(OTHER)
+  details    String?
   status     ReportStatus @default(PENDING)
   createdAt  DateTime     @default(now())
 
@@ -679,7 +729,8 @@ model PostReport {
   post       Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
   reporterId String
   reporter   Citizen      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-  reason     String
+  reasonType ReportReason @default(OTHER)
+  details    String?
   status     ReportStatus @default(PENDING)
   createdAt  DateTime     @default(now())
 
@@ -706,4 +757,16 @@ model VerificationRequest {
   reviewedById   String?
   reviewedBy     StaffMember?       @relation(fields: [reviewedById], references: [id])
   createdAt      DateTime           @default(now())
+}
+
+model UserWarning {
+  id         String      @id @default(uuid())
+  citizenId  String
+  citizen    Citizen     @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  reason     String
+  issuedById String
+  issuedBy   StaffMember @relation(fields: [issuedById], references: [id])
+  createdAt  DateTime    @default(now())
+
+  @@index([citizenId])
 }

@@ -1,10 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Eye, EyeOff, Heart, MessageCircle, Pin, Star, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Heart, MessageCircle, Pin, Star, Trash2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { apiClient } from "../../lib/api-client";
+
+const REASON_LABELS: Record<string, string> = {
+  SPAM: "स्पैम",
+  FAKE_INFORMATION: "झूठी जानकारी",
+  ABUSE: "दुर्व्यवहार",
+  HATE_HARASSMENT: "नफरत / उत्पीड़न",
+  INAPPROPRIATE_CONTENT: "अनुचित सामग्री",
+  VIOLENCE: "हिंसा",
+  OTHER: "अन्य",
+};
 
 const TABS = [
   { key: "posts", label: "पोस्ट" },
@@ -158,7 +168,8 @@ function PostsSection() {
 
 interface PostReportItem {
   id: string;
-  reason: string;
+  reasonType: string;
+  details?: string | null;
   status: string;
   createdAt: string;
   post: { id: string; content: string; author: { id: string; name: string } };
@@ -181,6 +192,15 @@ function ReportsSection() {
     mutationFn: async (postId: string) => apiClient.patch(`/posts/${postId}/hide`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["post-reports"] }),
   });
+  const warnMutation = useMutation({
+    mutationFn: async ({ citizenId, reason }: { citizenId: string; reason: string }) =>
+      apiClient.post(`/citizens/${citizenId}/warnings`, { reason }),
+  });
+
+  function handleWarn(citizenId: string, authorName: string) {
+    const reason = prompt(`${authorName} को चेतावनी भेजें — कारण लिखें:`);
+    if (reason) warnMutation.mutate({ citizenId, reason });
+  }
 
   return (
     <Card className="p-0">
@@ -198,7 +218,8 @@ function ReportsSection() {
               </div>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{r.post.content}</p>
               <p className="mt-1 text-xs text-slate-500">
-                <strong>कारण:</strong> {r.reason} — {r.reporter.name} द्वारा रिपोर्ट किया गया
+                <strong>कारण:</strong> {REASON_LABELS[r.reasonType] ?? r.reasonType}
+                {r.details ? ` — ${r.details}` : ""} — {r.reporter.name} द्वारा रिपोर्ट किया गया
               </p>
               <p className="mt-1 text-xs text-slate-400">{new Date(r.createdAt).toLocaleString()}</p>
             </div>
@@ -206,6 +227,9 @@ function ReportsSection() {
               <div className="flex shrink-0 flex-col gap-1">
                 <Button variant="danger" onClick={() => hidePostMutation.mutate(r.post.id)}>
                   पोस्ट छिपाएं
+                </Button>
+                <Button variant="secondary" onClick={() => handleWarn(r.post.author.id, r.post.author.name)}>
+                  <AlertTriangle size={14} /> चेतावनी दें
                 </Button>
                 <Button variant="secondary" onClick={() => reviewMutation.mutate({ id: r.id, status: "DISMISSED" })}>
                   खारिज करें
@@ -223,7 +247,8 @@ function ReportsSection() {
 
 interface CommentReportItem {
   id: string;
-  reason: string;
+  reasonType: string;
+  details?: string | null;
   status: string;
   createdAt: string;
   comment: { id: string; content: string; citizen: { id: string; name: string } };
@@ -242,6 +267,15 @@ function CommentReportsSection() {
       apiClient.patch(`/comment-reports/${id}`, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["comment-reports"] }),
   });
+  const warnMutation = useMutation({
+    mutationFn: async ({ citizenId, reason }: { citizenId: string; reason: string }) =>
+      apiClient.post(`/citizens/${citizenId}/warnings`, { reason }),
+  });
+
+  function handleWarn(citizenId: string, authorName: string) {
+    const reason = prompt(`${authorName} को चेतावनी भेजें — कारण लिखें:`);
+    if (reason) warnMutation.mutate({ citizenId, reason });
+  }
 
   return (
     <Card className="p-0">
@@ -259,14 +293,20 @@ function CommentReportsSection() {
               </div>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{r.comment.content}</p>
               <p className="mt-1 text-xs text-slate-500">
-                <strong>कारण:</strong> {r.reason} — {r.reporter.name} द्वारा रिपोर्ट किया गया
+                <strong>कारण:</strong> {REASON_LABELS[r.reasonType] ?? r.reasonType}
+                {r.details ? ` — ${r.details}` : ""} — {r.reporter.name} द्वारा रिपोर्ट किया गया
               </p>
               <p className="mt-1 text-xs text-slate-400">{new Date(r.createdAt).toLocaleString()}</p>
             </div>
             {r.status === "PENDING" && (
-              <Button variant="secondary" onClick={() => reviewMutation.mutate({ id: r.id, status: "DISMISSED" })}>
-                खारिज करें
-              </Button>
+              <div className="flex shrink-0 flex-col gap-1">
+                <Button variant="secondary" onClick={() => handleWarn(r.comment.citizen.id, r.comment.citizen.name)}>
+                  <AlertTriangle size={14} /> चेतावनी दें
+                </Button>
+                <Button variant="secondary" onClick={() => reviewMutation.mutate({ id: r.id, status: "DISMISSED" })}>
+                  खारिज करें
+                </Button>
+              </div>
             )}
           </li>
         ))}

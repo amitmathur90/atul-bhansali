@@ -1,9 +1,10 @@
-import { createCommentSchema, createReportSchema, OwnerType, updateCommentSchema } from "@abc/shared";
+import { createCommentSchema, createReportSchema, NotificationType, OwnerType, updateCommentSchema } from "@abc/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
 import { optionalAuth, requireAuth } from "../../middleware/auth.middleware";
+import { notifyOwner } from "../notifications/notifications.service";
 
 export const commentsRouter = Router({ mergeParams: true });
 
@@ -64,8 +65,9 @@ commentsRouter.post(
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
 
     const input = createCommentSchema.parse(req.body);
+    let parent = null;
     if (input.parentCommentId) {
-      const parent = await prisma.postComment.findUnique({ where: { id: input.parentCommentId } });
+      parent = await prisma.postComment.findUnique({ where: { id: input.parentCommentId } });
       if (!parent || parent.postId !== req.params.postId) {
         throw new AppError(400, "INVALID_PARENT", "Invalid parent comment");
       }
@@ -74,6 +76,29 @@ commentsRouter.post(
       data: { ...input, postId: req.params.postId, citizenId: req.user!.sub },
       include: { citizen: { select: AUTHOR_SELECT }, likes: { select: { citizenId: true } } },
     });
+
+    const commenter = await prisma.citizen.findUnique({ where: { id: req.user!.sub }, select: { name: true } });
+    if (parent) {
+      if (parent.citizenId !== req.user!.sub) {
+        await notifyOwner(
+          "CITIZEN",
+          parent.citizenId,
+          `${commenter?.name ?? "किसी ने"} ने आपकी टिप्पणी का जवाब दिया`,
+          input.content.slice(0, 140),
+          NotificationType.COMMENT_REPLY,
+          { relatedPostId: req.params.postId },
+        );
+      }
+    } else if (post.authorId !== req.user!.sub) {
+      await notifyOwner(
+        "CITIZEN",
+        post.authorId,
+        `${commenter?.name ?? "किसी ने"} ने आपकी पोस्ट पर टिप्पणी की`,
+        input.content.slice(0, 140),
+        NotificationType.POST_COMMENT,
+        { relatedPostId: req.params.postId },
+      );
+    }
     res.status(201).json(withLikeInfo(comment, req.user!.sub));
   }),
 );
