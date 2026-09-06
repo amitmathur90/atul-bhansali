@@ -6,6 +6,9 @@ import { errorMiddleware } from "./middleware/error.middleware";
 import { authRouter } from "./modules/auth/auth.routes";
 import { announcementsRouter } from "./modules/announcements/announcements.routes";
 import { appointmentsRouter } from "./modules/appointments/appointments.routes";
+import { candidateAnnouncementsRouter } from "./modules/campaign/candidate-announcements.routes";
+import { campaignPostsRouter } from "./modules/campaign/campaign-posts.routes";
+import { campaignEventsRouter } from "./modules/campaign/campaign-events.routes";
 import { categoriesRouter } from "./modules/categories/categories.routes";
 import { citizensRouter } from "./modules/citizens/citizens.routes";
 import { complaintsRouter } from "./modules/complaints/complaints.routes";
@@ -49,6 +52,9 @@ app.use("/api/citizens", citizensRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/appointments", appointmentsRouter);
 app.use("/api/welfare-schemes", welfareSchemesRouter);
+app.use("/api/candidate-announcements", candidateAnnouncementsRouter);
+app.use("/api/campaign-posts", campaignPostsRouter);
+app.use("/api/campaign-events", campaignEventsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } });

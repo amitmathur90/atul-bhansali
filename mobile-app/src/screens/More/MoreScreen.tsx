@@ -45,6 +45,10 @@ export function MoreScreen({ navigation }: Props) {
         label="मुलाकात हेतु अनुरोध"
         onPress={() => navigation.navigate("HomeTab", { screen: "BookAppointment" })}
       />
+      <MenuRow
+        label="चुनाव अभियान"
+        onPress={() => navigation.navigate("HomeTab", { screen: "Campaign" })}
+      />
       <MenuRow label="मेरी जानकारी" onPress={() => Alert.alert("मेरी जानकारी", "जल्द उपलब्ध होगा।")} />
       <MenuRow label="नोटिफिकेशन सेटिंग" onPress={() => navigation.navigate("Notifications")} />
       <MenuRow

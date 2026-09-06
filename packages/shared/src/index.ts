@@ -10,3 +10,4 @@ export * from "./schemas/emergency-contact";
 export * from "./schemas/lookups";
 export * from "./schemas/appointment";
 export * from "./schemas/welfare-scheme";
+export * from "./schemas/campaign";

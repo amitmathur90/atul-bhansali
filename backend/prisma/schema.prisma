@@ -45,6 +45,25 @@ enum AnnouncementType {
   EMPLOYMENT_NEWS
 }
 
+enum PartyStatus {
+  PARTY
+  INDEPENDENT
+}
+
+enum CampaignPostType {
+  POSTER
+  VIDEO
+  ANNOUNCEMENT
+  WORK_UPDATE
+  PUBLIC_MESSAGE
+}
+
+enum CampaignEventType {
+  PUBLIC_MEETING
+  RALLY
+  PROGRAM
+}
+
 enum DevProjectCategory {
   ROAD
   SCHOOL
@@ -123,9 +142,9 @@ model Ward {
 }
 
 model Department {
-  id        String     @id @default(uuid())
-  name      String     @unique
-  createdAt DateTime   @default(now())
+  id         String     @id @default(uuid())
+  name       String     @unique
+  createdAt  DateTime   @default(now())
   categories Category[]
 }
 
@@ -138,8 +157,8 @@ model Category {
   department   Department @relation(fields: [departmentId], references: [id])
   createdAt    DateTime   @default(now())
 
-  complaints          Complaint[]
-  staffAssignments    StaffCategoryAssignment[]
+  complaints       Complaint[]
+  staffAssignments StaffCategoryAssignment[]
 }
 
 // --- People ---
@@ -174,10 +193,13 @@ model StaffMember {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  wardAssignments      StaffWardAssignment[]
-  categoryAssignments  StaffCategoryAssignment[]
-  assignedComplaints   Complaint[]              @relation("AssignedStaff")
-  createdAnnouncements Announcement[]
+  wardAssignments               StaffWardAssignment[]
+  categoryAssignments           StaffCategoryAssignment[]
+  assignedComplaints            Complaint[]               @relation("AssignedStaff")
+  createdAnnouncements          Announcement[]
+  createdCandidateAnnouncements CandidateAnnouncement[]
+  createdCampaignPosts          CampaignPost[]
+  createdCampaignEvents         CampaignEvent[]
 }
 
 model StaffWardAssignment {
@@ -369,12 +391,12 @@ model DevelopmentProject {
 }
 
 model Gallery {
-  id        String              @id @default(uuid())
+  id        String             @id @default(uuid())
   projectId String
-  project   DevelopmentProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   DevelopmentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   imageUrl  String
   caption   String?
-  order     Int                 @default(0)
+  order     Int                @default(0)
 }
 
 model WelfareScheme {
@@ -433,4 +455,54 @@ model ActivityLog {
   createdAt  DateTime  @default(now())
 
   @@index([actorType, actorId])
+}
+
+// --- Election Campaign & Promotion ---
+
+model CandidateAnnouncement {
+  id              String      @id @default(uuid())
+  candidateName   String
+  profileImageUrl String?
+  position        String
+  constituency    String
+  partyStatus     PartyStatus @default(PARTY)
+  partyName       String?
+  message         String
+  publishAt       DateTime    @default(now())
+  isPublished     Boolean     @default(true)
+  createdById     String
+  createdBy       StaffMember @relation(fields: [createdById], references: [id])
+  createdAt       DateTime    @default(now())
+
+  @@index([isPublished, publishAt])
+}
+
+model CampaignPost {
+  id          String           @id @default(uuid())
+  type        CampaignPostType
+  title       String
+  description String?
+  mediaUrl    String?
+  publishAt   DateTime         @default(now())
+  isPublished Boolean          @default(true)
+  createdById String
+  createdBy   StaffMember      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+
+  @@index([isPublished, publishAt])
+}
+
+model CampaignEvent {
+  id          String            @id @default(uuid())
+  title       String
+  type        CampaignEventType
+  eventDate   DateTime
+  location    String
+  details     String?
+  isActive    Boolean           @default(true)
+  createdById String
+  createdBy   StaffMember       @relation(fields: [createdById], references: [id])
+  createdAt   DateTime          @default(now())
+
+  @@index([isActive, eventDate])
 }

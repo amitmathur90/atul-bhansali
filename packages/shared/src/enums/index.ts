@@ -113,6 +113,28 @@ export const AppointmentStatus = {
 } as const;
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus];
 
+export const PartyStatus = {
+  PARTY: "PARTY",
+  INDEPENDENT: "INDEPENDENT",
+} as const;
+export type PartyStatus = (typeof PartyStatus)[keyof typeof PartyStatus];
+
+export const CampaignPostType = {
+  POSTER: "POSTER",
+  VIDEO: "VIDEO",
+  ANNOUNCEMENT: "ANNOUNCEMENT",
+  WORK_UPDATE: "WORK_UPDATE",
+  PUBLIC_MESSAGE: "PUBLIC_MESSAGE",
+} as const;
+export type CampaignPostType = (typeof CampaignPostType)[keyof typeof CampaignPostType];
+
+export const CampaignEventType = {
+  PUBLIC_MEETING: "PUBLIC_MEETING",
+  RALLY: "RALLY",
+  PROGRAM: "PROGRAM",
+} as const;
+export type CampaignEventType = (typeof CampaignEventType)[keyof typeof CampaignEventType];
+
 // Allowed status transitions for the complaint workflow.
 export const COMPLAINT_STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
   RECEIVED: ["ASSIGNED", "REJECTED"],

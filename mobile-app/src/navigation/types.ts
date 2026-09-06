@@ -13,6 +13,7 @@ export type HomeStackParamList = {
   WelfareSchemeDetail: { id: string };
   BookAppointment: undefined;
   MyAppointments: undefined;
+  Campaign: undefined;
 };
 
 export type MyTicketsStackParamList = {
