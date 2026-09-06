@@ -1,6 +1,7 @@
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { apiClient } from "../../lib/api-client";
 import type { NoticeStackParamList } from "../../navigation/types";
 
@@ -38,6 +39,13 @@ export function AnnouncementDetailScreen({ route }: Props) {
       <Text style={styles.title}>{data.title}</Text>
       <Text style={styles.date}>{new Date(data.publishAt).toLocaleString()}</Text>
       <Text style={styles.body}>{data.body}</Text>
+      <TouchableOpacity
+        style={styles.shareButton}
+        onPress={() => Share.share({ message: `${data.title}\n\n${data.body}` })}
+      >
+        <Ionicons name="share-social-outline" size={16} color="#F5821F" />
+        <Text style={styles.shareButtonText}>शेयर करें</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -51,4 +59,17 @@ const styles = StyleSheet.create({
   title: { fontSize: 19, fontWeight: "700", marginTop: 4 },
   date: { fontSize: 12, color: "#999", marginTop: 6 },
   body: { fontSize: 14, color: "#333", marginTop: 16, lineHeight: 21 },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    marginTop: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#F5821F",
+  },
+  shareButtonText: { fontSize: 13, fontWeight: "600", color: "#F5821F" },
 });

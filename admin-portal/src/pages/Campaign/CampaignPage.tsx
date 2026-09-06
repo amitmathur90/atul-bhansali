@@ -1,6 +1,6 @@
 import { CampaignEventType, CampaignPostType, PartyStatus } from "@abc/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Heart, MessageSquare, Pencil, Star, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
@@ -14,6 +14,7 @@ const TABS = [
   { key: "candidate", label: "उम्मीदवार घोषणा" },
   { key: "posts", label: "प्रचार सामग्री" },
   { key: "events", label: "अभियान कार्यक्रम" },
+  { key: "feedback", label: "फीडबैक" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -44,6 +45,7 @@ export function CampaignPage() {
       {tab === "candidate" && <CandidateAnnouncementsSection />}
       {tab === "posts" && <CampaignPostsSection />}
       {tab === "events" && <CampaignEventsSection />}
+      {tab === "feedback" && <CampaignFeedbackSection />}
     </div>
   );
 }
@@ -239,6 +241,7 @@ interface CampaignPost {
   mediaUrl?: string | null;
   isPublished: boolean;
   publishAt: string;
+  likesCount: number;
 }
 
 const POST_TYPE_LABELS: Record<string, string> = {
@@ -382,6 +385,9 @@ function CampaignPostsSection() {
                     <p className="font-medium text-slate-800 dark:text-slate-100">{p.title}</p>
                     <Badge>{POST_TYPE_LABELS[p.type] ?? p.type}</Badge>
                     {!p.isPublished && <Badge>ड्राफ्ट</Badge>}
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Heart size={12} /> {p.likesCount}
+                    </span>
                   </div>
                   {p.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{p.description}</p>}
                   {p.type === CampaignPostType.VIDEO && p.mediaUrl && (
@@ -421,6 +427,7 @@ interface CampaignEvent {
   location: string;
   details?: string | null;
   isActive: boolean;
+  interestedCount: number;
 }
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -541,6 +548,9 @@ function CampaignEventsSection() {
                   <p className="font-medium text-slate-800 dark:text-slate-100">{e.title}</p>
                   <Badge>{EVENT_TYPE_LABELS[e.type] ?? e.type}</Badge>
                   {!e.isActive && <Badge>निष्क्रिय</Badge>}
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                    <Star size={12} /> {e.interestedCount} रुचि
+                  </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
                   {new Date(e.eventDate).toLocaleString("hi-IN")} • {e.location}
@@ -567,5 +577,62 @@ function CampaignEventsSection() {
         </ul>
       </Card>
     </div>
+  );
+}
+
+// --- Citizen Feedback / Engagement ---
+
+interface CampaignFeedbackItem {
+  id: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  citizen: { name: string; phone: string };
+}
+
+function CampaignFeedbackSection() {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["campaign-feedback"],
+    queryFn: async () =>
+      (await apiClient.get<{ items: CampaignFeedbackItem[] }>("/campaign-feedback")).data.items,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: async (id: string) => apiClient.patch(`/campaign-feedback/${id}/read`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["campaign-feedback"] }),
+  });
+
+  return (
+    <Card className="p-0">
+      {isLoading && <p className="p-4 text-sm text-slate-500">लोड हो रहा है…</p>}
+      {data?.length === 0 && <p className="p-4 text-sm text-slate-500">अभी तक कोई फीडबैक नहीं है।</p>}
+      <ul>
+        {data?.map((f) => (
+          <li
+            key={f.id}
+            className="flex items-start justify-between gap-4 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800"
+          >
+            <div className="flex items-start gap-3">
+              <MessageSquare size={16} className="mt-1 shrink-0 text-slate-400" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-slate-800 dark:text-slate-100">{f.citizen.name}</p>
+                  <span className="text-xs text-slate-400">{f.citizen.phone}</span>
+                  {!f.isRead && <Badge>नया</Badge>}
+                </div>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{f.message}</p>
+                <p className="mt-1 text-xs text-slate-400">{new Date(f.createdAt).toLocaleString()}</p>
+              </div>
+            </div>
+            {!f.isRead && (
+              <Button variant="secondary" onClick={() => markReadMutation.mutate(f.id)}>
+                देखा गया चिह्नित करें
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }

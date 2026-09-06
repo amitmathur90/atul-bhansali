@@ -75,6 +75,8 @@ export const NotificationType = {
   ANNOUNCEMENT: "ANNOUNCEMENT",
   EMERGENCY: "EMERGENCY",
   MEETING: "MEETING",
+  CAMPAIGN_POST: "CAMPAIGN_POST",
+  CAMPAIGN_EVENT: "CAMPAIGN_EVENT",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

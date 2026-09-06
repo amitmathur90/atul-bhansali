@@ -1,4 +1,4 @@
-import { createCampaignPostSchema, OwnerType, StaffRole, updateCampaignPostSchema } from "@abc/shared";
+import { createCampaignPostSchema, NotificationType, OwnerType, StaffRole, updateCampaignPostSchema } from "@abc/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
@@ -6,8 +6,33 @@ import { prisma } from "../../lib/prisma";
 import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { upload } from "../../middleware/upload.middleware";
 import { storageProvider } from "../../storage/storage.factory";
+import { notifyAllCitizens } from "../notifications/notifications.service";
 
 export const campaignPostsRouter = Router();
+
+async function withLikeInfo(items: { id: string }[], citizenId?: string) {
+  const counts = await prisma.campaignPostLike.groupBy({
+    by: ["postId"],
+    _count: { _all: true },
+    where: { postId: { in: items.map((i) => i.id) } },
+  });
+  const likedIds = citizenId
+    ? new Set(
+        (
+          await prisma.campaignPostLike.findMany({
+            where: { citizenId, postId: { in: items.map((i) => i.id) } },
+            select: { postId: true },
+          })
+        ).map((l) => l.postId),
+      )
+    : new Set<string>();
+
+  return items.map((item) => ({
+    ...item,
+    likesCount: counts.find((c) => c.postId === item.id)?._count._all ?? 0,
+    likedByMe: likedIds.has(item.id),
+  }));
+}
 
 campaignPostsRouter.get(
   "/",
@@ -18,7 +43,8 @@ campaignPostsRouter.get(
       where: isStaff ? {} : { isPublished: true, publishAt: { lte: new Date() } },
       orderBy: { publishAt: "desc" },
     });
-    res.json({ items });
+    const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
+    res.json({ items: await withLikeInfo(items, citizenId) });
   }),
 );
 
@@ -33,7 +59,9 @@ campaignPostsRouter.get(
     if (!isStaff && (!item.isPublished || item.publishAt > new Date())) {
       throw new AppError(404, "NOT_FOUND", "Campaign post not found");
     }
-    res.json(item);
+    const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
+    const [withInfo] = await withLikeInfo([item], citizenId);
+    res.json(withInfo);
   }),
 );
 
@@ -60,6 +88,11 @@ campaignPostsRouter.post(
     const item = await prisma.campaignPost.create({
       data: { ...input, createdById: req.user!.sub },
     });
+    if (item.isPublished && item.publishAt <= new Date()) {
+      await notifyAllCitizens(item.title, item.description ?? item.title, NotificationType.CAMPAIGN_POST, {
+        relatedCampaignPostId: item.id,
+      });
+    }
     res.status(201).json(item);
   }),
 );
@@ -93,5 +126,27 @@ campaignPostsRouter.delete(
   asyncHandler(async (req, res) => {
     await prisma.campaignPost.delete({ where: { id: req.params.id } });
     res.status(204).send();
+  }),
+);
+
+campaignPostsRouter.post(
+  "/:id/like",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    if (req.user!.ownerType !== OwnerType.CITIZEN) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens can like posts");
+    }
+    const postId = req.params.id;
+    const citizenId = req.user!.sub;
+    const existing = await prisma.campaignPostLike.findUnique({
+      where: { postId_citizenId: { postId, citizenId } },
+    });
+    if (existing) {
+      await prisma.campaignPostLike.delete({ where: { id: existing.id } });
+    } else {
+      await prisma.campaignPostLike.create({ data: { postId, citizenId } });
+    }
+    const likesCount = await prisma.campaignPostLike.count({ where: { postId } });
+    res.json({ liked: !existing, likesCount });
   }),
 );

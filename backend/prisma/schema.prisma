@@ -94,6 +94,8 @@ enum NotificationType {
   ANNOUNCEMENT
   EMERGENCY
   MEETING
+  CAMPAIGN_POST
+  CAMPAIGN_EVENT
 }
 
 enum RecipientType {
@@ -176,9 +178,12 @@ model Citizen {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  complaints   Complaint[]
-  feedbacks    Feedback[]
-  appointments Appointment[]
+  complaints             Complaint[]
+  feedbacks              Feedback[]
+  appointments           Appointment[]
+  campaignPostLikes      CampaignPostLike[]
+  campaignEventInterests CampaignEventInterest[]
+  campaignFeedbacks      CampaignFeedback[]
 }
 
 model StaffMember {
@@ -421,18 +426,20 @@ model EmergencyContact {
 }
 
 model Notification {
-  id                    String           @id @default(uuid())
-  recipientType         RecipientType
-  recipientId           String
-  title                 String
-  body                  String
-  type                  NotificationType
-  relatedComplaintId    String?
-  relatedAnnouncementId String?
-  relatedAppointmentId  String?
-  isRead                Boolean          @default(false)
-  pushStatus            String?
-  createdAt             DateTime         @default(now())
+  id                     String           @id @default(uuid())
+  recipientType          RecipientType
+  recipientId            String
+  title                  String
+  body                   String
+  type                   NotificationType
+  relatedComplaintId     String?
+  relatedAnnouncementId  String?
+  relatedAppointmentId   String?
+  relatedCampaignPostId  String?
+  relatedCampaignEventId String?
+  isRead                 Boolean          @default(false)
+  pushStatus             String?
+  createdAt              DateTime         @default(now())
 
   @@index([recipientType, recipientId])
 }
@@ -489,6 +496,8 @@ model CampaignPost {
   createdBy   StaffMember      @relation(fields: [createdById], references: [id])
   createdAt   DateTime         @default(now())
 
+  likes CampaignPostLike[]
+
   @@index([isPublished, publishAt])
 }
 
@@ -504,5 +513,40 @@ model CampaignEvent {
   createdBy   StaffMember       @relation(fields: [createdById], references: [id])
   createdAt   DateTime          @default(now())
 
+  interests CampaignEventInterest[]
+
   @@index([isActive, eventDate])
+}
+
+model CampaignPostLike {
+  id        String       @id @default(uuid())
+  postId    String
+  post      CampaignPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  citizenId String
+  citizen   Citizen      @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([postId, citizenId])
+}
+
+model CampaignEventInterest {
+  id        String        @id @default(uuid())
+  eventId   String
+  event     CampaignEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  citizenId String
+  citizen   Citizen       @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([eventId, citizenId])
+}
+
+model CampaignFeedback {
+  id        String   @id @default(uuid())
+  citizenId String
+  citizen   Citizen  @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([isRead, createdAt])
 }

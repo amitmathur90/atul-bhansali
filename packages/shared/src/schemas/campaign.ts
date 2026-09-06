@@ -30,6 +30,11 @@ export const updateCampaignPostSchema = createCampaignPostSchema.partial().exten
 export type CreateCampaignPostInput = z.infer<typeof createCampaignPostSchema>;
 export type UpdateCampaignPostInput = z.infer<typeof updateCampaignPostSchema>;
 
+export const createCampaignFeedbackSchema = z.object({
+  message: z.string().min(3).max(1000),
+});
+export type CreateCampaignFeedbackInput = z.infer<typeof createCampaignFeedbackSchema>;
+
 export const createCampaignEventSchema = z.object({
   title: z.string().min(2).max(150),
   type: z.nativeEnum(CampaignEventType),

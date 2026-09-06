@@ -1,4 +1,4 @@
-import { createAnnouncementSchema, OwnerType, StaffRole, updateAnnouncementSchema } from "@abc/shared";
+import { createAnnouncementSchema, NotificationType, OwnerType, StaffRole, updateAnnouncementSchema } from "@abc/shared";
 import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma";
 import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { upload } from "../../middleware/upload.middleware";
 import { storageProvider } from "../../storage/storage.factory";
+import { notifyAllCitizens } from "../notifications/notifications.service";
 
 export const announcementsRouter = Router();
 
@@ -57,6 +58,11 @@ announcementsRouter.post(
     const announcement = await prisma.announcement.create({
       data: { ...input, createdById: req.user!.sub },
     });
+    if (announcement.isPublished && announcement.publishAt <= new Date()) {
+      await notifyAllCitizens(announcement.title, announcement.body, NotificationType.ANNOUNCEMENT, {
+        relatedAnnouncementId: announcement.id,
+      });
+    }
     res.status(201).json(announcement);
   }),
 );
