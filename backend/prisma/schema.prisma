@@ -64,6 +64,24 @@ enum CampaignEventType {
   PROGRAM
 }
 
+enum PostMediaType {
+  NONE
+  IMAGE
+  VIDEO
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum DevProjectCategory {
   ROAD
   SCHOOL
@@ -166,17 +184,19 @@ model Category {
 // --- People ---
 
 model Citizen {
-  id        String   @id @default(uuid())
-  name      String
-  phone     String   @unique
-  address   String?
-  wardId    String?
-  ward      Ward?    @relation(fields: [wardId], references: [id])
-  city      String?
-  pincode   String?
-  isBlocked Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String
+  phone         String   @unique
+  address       String?
+  wardId        String?
+  ward          Ward?    @relation(fields: [wardId], references: [id])
+  city          String?
+  pincode       String?
+  isBlocked     Boolean  @default(false)
+  isVerified    Boolean  @default(false)
+  verifiedLabel String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   complaints             Complaint[]
   feedbacks              Feedback[]
@@ -184,6 +204,13 @@ model Citizen {
   campaignPostLikes      CampaignPostLike[]
   campaignEventInterests CampaignEventInterest[]
   campaignFeedbacks      CampaignFeedback[]
+  posts                  Post[]
+  postLikes              PostLike[]
+  postComments           PostComment[]
+  postReports            PostReport[]
+  verificationRequests   VerificationRequest[]
+  followers              Follow[]                @relation("Following")
+  following              Follow[]                @relation("Follower")
 }
 
 model StaffMember {
@@ -205,6 +232,7 @@ model StaffMember {
   createdCandidateAnnouncements CandidateAnnouncement[]
   createdCampaignPosts          CampaignPost[]
   createdCampaignEvents         CampaignEvent[]
+  reviewedVerifications         VerificationRequest[]
 }
 
 model StaffWardAssignment {
@@ -549,4 +577,88 @@ model CampaignFeedback {
   createdAt DateTime @default(now())
 
   @@index([isRead, createdAt])
+}
+
+// --- Citizen Connect Feed (social feed module) ---
+
+model Post {
+  id         String        @id @default(uuid())
+  authorId   String
+  author     Citizen       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content    String
+  mediaType  PostMediaType @default(NONE)
+  mediaUrl   String?
+  isPinned   Boolean       @default(false)
+  isFeatured Boolean       @default(false)
+  isHidden   Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  likes    PostLike[]
+  comments PostComment[]
+  reports  PostReport[]
+
+  @@index([isHidden, createdAt])
+  @@index([authorId])
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  citizenId String
+  citizen   Citizen  @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, citizenId])
+}
+
+model PostComment {
+  id              String        @id @default(uuid())
+  postId          String
+  post            Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  citizenId       String
+  citizen         Citizen       @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  content         String
+  parentCommentId String?
+  parentComment   PostComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         PostComment[] @relation("CommentReplies")
+  createdAt       DateTime      @default(now())
+
+  @@index([postId])
+}
+
+model PostReport {
+  id         String       @id @default(uuid())
+  postId     String
+  post       Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   Citizen      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  @@index([status])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  follower    Citizen  @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   Citizen  @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model VerificationRequest {
+  id             String             @id @default(uuid())
+  citizenId      String
+  citizen        Citizen            @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  requestedLabel String
+  status         VerificationStatus @default(PENDING)
+  reviewedById   String?
+  reviewedBy     StaffMember?       @relation(fields: [reviewedById], references: [id])
+  createdAt      DateTime           @default(now())
 }

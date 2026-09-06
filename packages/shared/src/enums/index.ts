@@ -137,6 +137,27 @@ export const CampaignEventType = {
 } as const;
 export type CampaignEventType = (typeof CampaignEventType)[keyof typeof CampaignEventType];
 
+export const PostMediaType = {
+  NONE: "NONE",
+  IMAGE: "IMAGE",
+  VIDEO: "VIDEO",
+} as const;
+export type PostMediaType = (typeof PostMediaType)[keyof typeof PostMediaType];
+
+export const ReportStatus = {
+  PENDING: "PENDING",
+  REVIEWED: "REVIEWED",
+  DISMISSED: "DISMISSED",
+} as const;
+export type ReportStatus = (typeof ReportStatus)[keyof typeof ReportStatus];
+
+export const VerificationStatus = {
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+} as const;
+export type VerificationStatus = (typeof VerificationStatus)[keyof typeof VerificationStatus];
+
 // Allowed status transitions for the complaint workflow.
 export const COMPLAINT_STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
   RECEIVED: ["ASSIGNED", "REJECTED"],

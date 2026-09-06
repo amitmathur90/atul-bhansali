@@ -7,6 +7,7 @@ import { AnnouncementsPage } from "./pages/Announcements/AnnouncementsPage";
 import { AppointmentsPage } from "./pages/Appointments/AppointmentsPage";
 import { LoginPage } from "./pages/Auth/LoginPage";
 import { CampaignPage } from "./pages/Campaign/CampaignPage";
+import { FeedModerationPage } from "./pages/Feed/FeedModerationPage";
 import { CitizensPage } from "./pages/Citizens/CitizensPage";
 import { ComplaintDetailPage } from "./pages/Complaints/ComplaintDetailPage";
 import { ComplaintsListPage } from "./pages/Complaints/ComplaintsListPage";
@@ -45,6 +46,7 @@ function App() {
             <Route path="/appointments" element={<AppointmentsPage />} />
             <Route path="/welfare-schemes" element={<WelfareSchemesPage />} />
             <Route path="/campaign" element={<CampaignPage />} />
+            <Route path="/feed" element={<FeedModerationPage />} />
             <Route path="/emergency-contacts" element={<EmergencyContactsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/lookups" element={<LookupsPage />} />

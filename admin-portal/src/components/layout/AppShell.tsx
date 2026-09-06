@@ -39,6 +39,7 @@ const NAV_ITEMS: NavEntry[] = [
   { to: "/development-projects", label: "विकास कार्य", roles: [StaffRole.MLA, StaffRole.SUPER_ADMIN] },
   { to: "/announcements", label: "नोटिस / घोषणा", roles: [StaffRole.MLA, StaffRole.SUPER_ADMIN] },
   { to: "/campaign", label: "चुनाव अभियान", roles: [StaffRole.MLA, StaffRole.SUPER_ADMIN] },
+  { to: "/feed", label: "सिटीज़न फ़ीड", roles: [StaffRole.MLA, StaffRole.SUPER_ADMIN] },
   { to: "/appointments", label: "अपॉइंटमेंट", roles: [StaffRole.MLA, StaffRole.SUPER_ADMIN] },
   { to: "/welfare-schemes", label: "कल्याण योजनाएं", roles: [StaffRole.MLA, StaffRole.SUPER_ADMIN] },
   { to: "/emergency-contacts", label: "आपातकालीन संपर्क", roles: [StaffRole.MLA, StaffRole.SUPER_ADMIN] },

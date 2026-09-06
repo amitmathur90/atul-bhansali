@@ -19,6 +19,11 @@ export type CampaignStackParamList = {
   Campaign: undefined;
 };
 
+export type FeedStackParamList = {
+  FeedList: undefined;
+  PostComments: { postId: string };
+};
+
 export type MyTicketsStackParamList = {
   MyComplaints: undefined;
   NewComplaint: undefined;
@@ -35,6 +40,7 @@ export type ProfileStackParamList = {
   EmergencyContacts: undefined;
   ContactMla: undefined;
   Notifications: undefined;
+  VerificationRequest: undefined;
 };
 
 export type MainTabParamList = {
@@ -42,5 +48,6 @@ export type MainTabParamList = {
   ComplaintTab: NavigatorScreenParams<MyTicketsStackParamList>;
   NoticeTab: NavigatorScreenParams<NoticeStackParamList>;
   CampaignTab: NavigatorScreenParams<CampaignStackParamList>;
+  FeedTab: NavigatorScreenParams<FeedStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };

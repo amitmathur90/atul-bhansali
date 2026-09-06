@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { colors } from "../theme";
 import { ContactMlaScreen } from "../screens/ContactMla/ContactMlaScreen";
 import { EmergencyContactsScreen } from "../screens/EmergencyContacts/EmergencyContactsScreen";
+import { VerificationRequestScreen } from "../screens/Feed/VerificationRequestScreen";
 import { MoreScreen } from "../screens/More/MoreScreen";
 import { NotificationsScreen } from "../screens/Notifications/NotificationsScreen";
 import type { ProfileStackParamList } from "./types";
@@ -24,6 +25,11 @@ export function ProfileStack() {
       />
       <Stack.Screen name="ContactMla" component={ContactMlaScreen} options={{ title: "कार्यालय संपर्क" }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: "सूचनाएं" }} />
+      <Stack.Screen
+        name="VerificationRequest"
+        component={VerificationRequestScreen}
+        options={{ title: "सत्यापन के लिए आवेदन करें" }}
+      />
     </Stack.Navigator>
   );
 }

@@ -49,6 +49,14 @@ export function MoreScreen({ navigation }: Props) {
         label="चुनाव अभियान"
         onPress={() => navigation.navigate("CampaignTab", { screen: "Campaign" })}
       />
+      <MenuRow
+        label="सिटीज़न फ़ीड"
+        onPress={() => navigation.navigate("FeedTab", { screen: "FeedList" })}
+      />
+      <MenuRow
+        label="सत्यापन के लिए आवेदन करें"
+        onPress={() => navigation.navigate("VerificationRequest")}
+      />
       <MenuRow label="मेरी जानकारी" onPress={() => Alert.alert("मेरी जानकारी", "जल्द उपलब्ध होगा।")} />
       <MenuRow label="नोटिफिकेशन सेटिंग" onPress={() => navigation.navigate("Notifications")} />
       <MenuRow
