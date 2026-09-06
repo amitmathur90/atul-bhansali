@@ -22,6 +22,7 @@ export type CampaignStackParamList = {
 export type FeedStackParamList = {
   FeedList: undefined;
   PostComments: { postId: string };
+  UserProfile: { citizenId: string };
 };
 
 export type MyTicketsStackParamList = {

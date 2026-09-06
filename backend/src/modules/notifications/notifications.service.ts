@@ -71,3 +71,31 @@ export async function notifyAllCitizens(
     );
   }
 }
+
+// Notifies everyone following a given citizen — used when that citizen publishes a new
+// feed post, so followers hear about it without every citizen being spammed.
+export async function notifyFollowers(citizenId: string, title: string, body: string, type: NotificationType) {
+  const followers = await prisma.follow.findMany({ where: { followingId: citizenId }, select: { followerId: true } });
+  if (followers.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: followers.map((f) => ({
+      recipientType: "CITIZEN" as const,
+      recipientId: f.followerId,
+      title,
+      body,
+      type,
+    })),
+  });
+
+  const deviceTokens = await prisma.deviceToken.findMany({
+    where: { ownerType: "CITIZEN", ownerId: { in: followers.map((f) => f.followerId) } },
+  });
+  if (deviceTokens.length > 0) {
+    await pushProvider.send(
+      deviceTokens.map((d) => d.token),
+      title,
+      body,
+    );
+  }
+}

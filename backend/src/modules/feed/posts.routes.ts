@@ -1,4 +1,4 @@
-import { createPostSchema, OwnerType, StaffRole, updatePostSchema } from "@abc/shared";
+import { createPostSchema, NotificationType, OwnerType, ReactionType, StaffRole, updatePostSchema } from "@abc/shared";
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../../lib/asyncHandler";
@@ -7,10 +7,12 @@ import { prisma } from "../../lib/prisma";
 import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { upload } from "../../middleware/upload.middleware";
 import { storageProvider } from "../../storage/storage.factory";
+import { notifyFollowers } from "../notifications/notifications.service";
 
 export const postsRouter = Router();
 
-const AUTHOR_SELECT = { id: true, name: true, isVerified: true, verifiedLabel: true };
+const AUTHOR_SELECT = { id: true, name: true, isVerified: true, verifiedLabel: true, profilePhotoUrl: true };
+const SHARED_POST_INCLUDE = { author: { select: AUTHOR_SELECT } };
 
 const listQuerySchema = z.object({
   authorId: z.string().uuid().optional(),
@@ -23,24 +25,30 @@ interface PostWithCounts {
   _count: { likes: number; comments: number };
 }
 
+const EMPTY_REACTIONS: Record<string, number> = Object.fromEntries(Object.values(ReactionType).map((t) => [t, 0]));
+
 async function serializePosts<T extends PostWithCounts>(posts: T[], citizenId?: string) {
   const postIds = posts.map((p) => p.id);
-  const likedIds = citizenId
-    ? new Set(
-        (
-          await prisma.postLike.findMany({
-            where: { citizenId, postId: { in: postIds } },
-            select: { postId: true },
-          })
-        ).map((l) => l.postId),
-      )
-    : new Set<string>();
-  return posts.map(({ _count, ...p }) => ({
-    ...p,
-    likesCount: _count.likes,
-    commentsCount: _count.comments,
-    likedByMe: likedIds.has(p.id),
-  }));
+  const allReactions = await prisma.postLike.findMany({
+    where: { postId: { in: postIds } },
+    select: { postId: true, citizenId: true, type: true },
+  });
+  const myReactionByPost = new Map(
+    citizenId ? allReactions.filter((r) => r.citizenId === citizenId).map((r) => [r.postId, r.type]) : [],
+  );
+  return posts.map(({ _count, ...p }) => {
+    const reactions = { ...EMPTY_REACTIONS };
+    for (const r of allReactions) {
+      if (r.postId === p.id) reactions[r.type] = (reactions[r.type] ?? 0) + 1;
+    }
+    return {
+      ...p,
+      likesCount: _count.likes,
+      commentsCount: _count.comments,
+      reactions,
+      myReaction: myReactionByPost.get(p.id) ?? null,
+    };
+  });
 }
 
 postsRouter.get(
@@ -56,7 +64,11 @@ postsRouter.get(
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
         where,
-        include: { author: { select: AUTHOR_SELECT }, _count: { select: { likes: true, comments: true } } },
+        include: {
+          author: { select: AUTHOR_SELECT },
+          sharedPost: { include: SHARED_POST_INCLUDE },
+          _count: { select: { likes: true, comments: true } },
+        },
         orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -74,7 +86,11 @@ postsRouter.get(
   asyncHandler(async (req, res) => {
     const post = await prisma.post.findUnique({
       where: { id: req.params.id },
-      include: { author: { select: AUTHOR_SELECT }, _count: { select: { likes: true, comments: true } } },
+      include: {
+        author: { select: AUTHOR_SELECT },
+        sharedPost: { include: SHARED_POST_INCLUDE },
+        _count: { select: { likes: true, comments: true } },
+      },
     });
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
     const isStaff = req.user?.ownerType === OwnerType.STAFF;
@@ -107,10 +123,25 @@ postsRouter.post(
       ...(mediaType ? { mediaType } : {}),
       ...(mediaUrl ? { mediaUrl } : {}),
     });
+    if (input.sharedPostId) {
+      const original = await prisma.post.findUnique({ where: { id: input.sharedPostId } });
+      if (!original || original.isHidden) throw new AppError(404, "NOT_FOUND", "Shared post not found");
+    }
     const post = await prisma.post.create({
       data: { ...input, authorId: req.user!.sub },
-      include: { author: { select: AUTHOR_SELECT }, _count: { select: { likes: true, comments: true } } },
+      include: {
+        author: { select: AUTHOR_SELECT },
+        sharedPost: { include: SHARED_POST_INCLUDE },
+        _count: { select: { likes: true, comments: true } },
+      },
     });
+    const author = await prisma.citizen.findUnique({ where: { id: req.user!.sub }, select: { name: true } });
+    await notifyFollowers(
+      req.user!.sub,
+      `${author?.name ?? "एक उपयोगकर्ता"} ने नई पोस्ट साझा की`,
+      post.content.slice(0, 140),
+      NotificationType.NEW_POST,
+    );
     const [serialized] = await serializePosts([post], req.user!.sub);
     res.status(201).json(serialized);
   }),
@@ -143,23 +174,35 @@ postsRouter.delete(
   }),
 );
 
+const reactSchema = z.object({ type: z.nativeEnum(ReactionType) });
+
+// One reaction per citizen per post. Sending the same type again removes it; sending a
+// different type switches it. Returns the full per-type breakdown so the client can render
+// "👍 120 ❤️ 45 👏 20" without a second round trip.
 postsRouter.post(
-  "/:id/like",
+  "/:id/react",
   requireAuth,
   asyncHandler(async (req, res) => {
     if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens can like posts");
+      throw new AppError(403, "FORBIDDEN", "Only citizens can react to posts");
     }
+    const { type } = reactSchema.parse(req.body);
     const postId = req.params.id;
     const citizenId = req.user!.sub;
     const existing = await prisma.postLike.findUnique({ where: { postId_citizenId: { postId, citizenId } } });
-    if (existing) {
+    let myReaction: string | null = type;
+    if (existing && existing.type === type) {
       await prisma.postLike.delete({ where: { id: existing.id } });
+      myReaction = null;
+    } else if (existing) {
+      await prisma.postLike.update({ where: { id: existing.id }, data: { type } });
     } else {
-      await prisma.postLike.create({ data: { postId, citizenId } });
+      await prisma.postLike.create({ data: { postId, citizenId, type } });
     }
-    const likesCount = await prisma.postLike.count({ where: { postId } });
-    res.json({ liked: !existing, likesCount });
+    const allReactions = await prisma.postLike.findMany({ where: { postId }, select: { type: true } });
+    const reactions = { ...EMPTY_REACTIONS };
+    for (const r of allReactions) reactions[r.type] = (reactions[r.type] ?? 0) + 1;
+    res.json({ reactions, myReaction, likesCount: allReactions.length });
   }),
 );
 

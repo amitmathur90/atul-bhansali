@@ -25,6 +25,23 @@ import { colors, radius, shadow, spacing } from "../../theme";
 
 type Props = NativeStackScreenProps<FeedStackParamList, "FeedList">;
 
+const REACTION_META: Record<string, { emoji: string; label: string }> = {
+  LIKE: { emoji: "👍", label: "लाइक" },
+  SUPPORT: { emoji: "❤️", label: "समर्थन" },
+  APPRECIATED: { emoji: "👏", label: "सराहा" },
+  WOW: { emoji: "😮", label: "वाह" },
+  CONCERN: { emoji: "😔", label: "चिंता" },
+};
+const REACTION_ORDER = ["LIKE", "SUPPORT", "APPRECIATED", "WOW", "CONCERN"];
+
+interface FeedAuthor {
+  id: string;
+  name: string;
+  isVerified: boolean;
+  verifiedLabel?: string | null;
+  profilePhotoUrl?: string | null;
+}
+
 interface FeedPost {
   id: string;
   content: string;
@@ -34,9 +51,11 @@ interface FeedPost {
   isFeatured: boolean;
   likesCount: number;
   commentsCount: number;
-  likedByMe: boolean;
+  reactions: Record<string, number>;
+  myReaction: string | null;
   createdAt: string;
-  author: { id: string; name: string; isVerified: boolean; verifiedLabel?: string | null };
+  author: FeedAuthor;
+  sharedPost?: (Pick<FeedPost, "id" | "content" | "mediaUrl" | "mediaType"> & { author: FeedAuthor }) | null;
 }
 
 export function FeedListScreen({ navigation }: Props) {
@@ -44,6 +63,7 @@ export function FeedListScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [image, setImage] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [pickerForPostId, setPickerForPostId] = useState<string | null>(null);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["feed-posts"],
@@ -51,10 +71,11 @@ export function FeedListScreen({ navigation }: Props) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (sharedPostId?: string) => {
       const form = new FormData();
-      form.append("content", content);
+      form.append("content", content || "इस पोस्ट को शेयर किया");
       if (image) form.append("image", image as unknown as Blob);
+      if (sharedPostId) form.append("sharedPostId", sharedPostId);
       return (await apiClient.post("/posts", form)).data;
     },
     onSuccess: () => {
@@ -64,8 +85,9 @@ export function FeedListScreen({ navigation }: Props) {
     },
   });
 
-  const likeMutation = useMutation({
-    mutationFn: async (postId: string) => (await apiClient.post(`/posts/${postId}/like`)).data,
+  const reactMutation = useMutation({
+    mutationFn: async ({ postId, type }: { postId: string; type: string }) =>
+      (await apiClient.post(`/posts/${postId}/react`, { type })).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feed-posts"] }),
   });
 
@@ -89,9 +111,6 @@ export function FeedListScreen({ navigation }: Props) {
 
   const [reportingId, setReportingId] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState("");
-  function reportViaModal(postId: string) {
-    setReportingId(postId);
-  }
   const reportMutation = useMutation({
     mutationFn: async () => apiClient.post(`/posts/${reportingId}/report`, { reason: reportReason }),
     onSuccess: () => {
@@ -100,6 +119,20 @@ export function FeedListScreen({ navigation }: Props) {
       Alert.alert("धन्यवाद", "आपकी रिपोर्ट भेज दी गई है।");
     },
   });
+
+  function handleSharePress(post: FeedPost) {
+    Alert.alert("पोस्ट शेयर करें", undefined, [
+      { text: "रद्द करें", style: "cancel" },
+      { text: "मेरी फीड पर शेयर करें", onPress: () => createMutation.mutate(post.id) },
+      { text: "अन्य ऐप में शेयर करें", onPress: () => Share.share({ message: post.content }) },
+    ]);
+  }
+
+  function reactionSummary(reactions: Record<string, number>) {
+    return REACTION_ORDER.filter((t) => reactions[t] > 0)
+      .map((t) => `${REACTION_META[t].emoji} ${reactions[t]}`)
+      .join("  ");
+  }
 
   return (
     <KeyboardAvoidingView
@@ -130,7 +163,7 @@ export function FeedListScreen({ navigation }: Props) {
               <TouchableOpacity
                 style={[styles.postButton, !content.trim() && styles.postButtonDisabled]}
                 disabled={!content.trim() || createMutation.isPending}
-                onPress={() => createMutation.mutate()}
+                onPress={() => createMutation.mutate(undefined)}
               >
                 {createMutation.isPending ? (
                   <ActivityIndicator color="#fff" size="small" />
@@ -153,7 +186,10 @@ export function FeedListScreen({ navigation }: Props) {
               </View>
             )}
             <View style={styles.postHeader}>
-              <View style={styles.authorRow}>
+              <TouchableOpacity
+                style={styles.authorRow}
+                onPress={() => navigation.navigate("UserProfile", { citizenId: item.author.id })}
+              >
                 <Text style={styles.authorName}>{item.author.name}</Text>
                 {item.author.isVerified && (
                   <View style={styles.verifiedBadge}>
@@ -161,7 +197,7 @@ export function FeedListScreen({ navigation }: Props) {
                     <Text style={styles.verifiedText}>{item.author.verifiedLabel ?? "सत्यापित"}</Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
               {item.author.id === citizen?.id ? (
                 <TouchableOpacity
                   onPress={() =>
@@ -182,14 +218,52 @@ export function FeedListScreen({ navigation }: Props) {
             {item.mediaUrl && item.mediaType === "IMAGE" && (
               <Image source={{ uri: item.mediaUrl }} style={styles.postImage} />
             )}
+
+            {item.sharedPost && (
+              <View style={styles.sharedPostBox}>
+                <Text style={styles.sharedAuthorName}>{item.sharedPost.author.name}</Text>
+                <Text style={styles.sharedContent} numberOfLines={4}>
+                  {item.sharedPost.content}
+                </Text>
+                {item.sharedPost.mediaUrl && item.sharedPost.mediaType === "IMAGE" && (
+                  <Image source={{ uri: item.sharedPost.mediaUrl }} style={styles.sharedImage} />
+                )}
+              </View>
+            )}
+
+            {Object.values(item.reactions).some((c) => c > 0) && (
+              <Text style={styles.reactionSummary}>{reactionSummary(item.reactions)}</Text>
+            )}
+
+            {pickerForPostId === item.id && (
+              <View style={styles.reactionPicker}>
+                {REACTION_ORDER.map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={styles.reactionPickerItem}
+                    onPress={() => {
+                      reactMutation.mutate({ postId: item.id, type });
+                      setPickerForPostId(null);
+                    }}
+                  >
+                    <Text style={styles.reactionPickerEmoji}>{REACTION_META[type].emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.actionButton} onPress={() => likeMutation.mutate(item.id)}>
-                <Ionicons
-                  name={item.likedByMe ? "heart" : "heart-outline"}
-                  size={18}
-                  color={item.likedByMe ? colors.danger : colors.textMuted}
-                />
-                <Text style={styles.actionText}>{item.likesCount}</Text>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => reactMutation.mutate({ postId: item.id, type: item.myReaction ?? "LIKE" })}
+                onLongPress={() => setPickerForPostId(item.id)}
+              >
+                {item.myReaction ? (
+                  <Text style={styles.reactionActiveEmoji}>{REACTION_META[item.myReaction].emoji}</Text>
+                ) : (
+                  <Ionicons name="thumbs-up-outline" size={17} color={colors.textMuted} />
+                )}
+                <Text style={styles.actionText}>{item.myReaction ? REACTION_META[item.myReaction].label : "रिएक्ट करें"}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
@@ -198,14 +272,11 @@ export function FeedListScreen({ navigation }: Props) {
                 <Ionicons name="chatbubble-outline" size={16} color={colors.textMuted} />
                 <Text style={styles.actionText}>{item.commentsCount}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => Share.share({ message: item.content })}
-              >
+              <TouchableOpacity style={styles.actionButton} onPress={() => handleSharePress(item)}>
                 <Ionicons name="share-social-outline" size={16} color={colors.textMuted} />
                 <Text style={styles.actionText}>शेयर करें</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} onPress={() => reportViaModal(item.id)}>
+              <TouchableOpacity style={styles.actionButton} onPress={() => setReportingId(item.id)}>
                 <Ionicons name="flag-outline" size={15} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -292,6 +363,29 @@ const styles = StyleSheet.create({
   followButtonTextActive: { color: "#fff" },
   postContent: { fontSize: 14, color: colors.text, marginTop: spacing.sm, lineHeight: 20 },
   postImage: { width: "100%", height: 200, borderRadius: radius.md, marginTop: spacing.sm },
+  sharedPostBox: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  sharedAuthorName: { fontSize: 12, fontWeight: "700", color: colors.text },
+  sharedContent: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  sharedImage: { width: "100%", height: 120, borderRadius: radius.sm, marginTop: spacing.xs },
+  reactionSummary: { fontSize: 13, marginTop: spacing.sm, color: colors.textMuted },
+  reactionPicker: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: colors.background,
+    borderRadius: radius.full,
+    paddingVertical: 6,
+    marginTop: spacing.sm,
+    ...shadow.card,
+  },
+  reactionPickerItem: { paddingHorizontal: 8 },
+  reactionPickerEmoji: { fontSize: 22 },
+  reactionActiveEmoji: { fontSize: 16 },
   actionRow: {
     flexDirection: "row",
     gap: spacing.lg,

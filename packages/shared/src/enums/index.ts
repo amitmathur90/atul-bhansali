@@ -77,6 +77,7 @@ export const NotificationType = {
   MEETING: "MEETING",
   CAMPAIGN_POST: "CAMPAIGN_POST",
   CAMPAIGN_EVENT: "CAMPAIGN_EVENT",
+  NEW_POST: "NEW_POST",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 
@@ -157,6 +158,15 @@ export const VerificationStatus = {
   REJECTED: "REJECTED",
 } as const;
 export type VerificationStatus = (typeof VerificationStatus)[keyof typeof VerificationStatus];
+
+export const ReactionType = {
+  LIKE: "LIKE",
+  SUPPORT: "SUPPORT",
+  APPRECIATED: "APPRECIATED",
+  WOW: "WOW",
+  CONCERN: "CONCERN",
+} as const;
+export type ReactionType = (typeof ReactionType)[keyof typeof ReactionType];
 
 // Allowed status transitions for the complaint workflow.
 export const COMPLAINT_STATUS_TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {

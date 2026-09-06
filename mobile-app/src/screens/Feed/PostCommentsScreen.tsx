@@ -32,6 +32,9 @@ interface Comment {
   id: string;
   content: string;
   createdAt: string;
+  updatedAt: string;
+  likesCount: number;
+  likedByMe: boolean;
   citizen: CommentAuthor;
   replies: Comment[];
 }
@@ -42,31 +45,52 @@ export function PostCommentsScreen({ route }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["post-comments", postId],
     queryFn: async () => (await apiClient.get<{ items: Comment[] }>(`/posts/${postId}/comments`)).data.items,
   });
 
+  function invalidate() {
+    queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
+    queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+  }
+
   const submitMutation = useMutation({
-    mutationFn: async () =>
-      apiClient.post(`/posts/${postId}/comments`, {
+    mutationFn: async () => {
+      if (editingId) return apiClient.patch(`/posts/${postId}/comments/${editingId}`, { content: text });
+      return apiClient.post(`/posts/${postId}/comments`, {
         content: text,
         ...(replyTo ? { parentCommentId: replyTo.id } : {}),
-      }),
+      });
+    },
     onSuccess: () => {
       setText("");
       setReplyTo(null);
-      queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      setEditingId(null);
+      invalidate();
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (commentId: string) => apiClient.delete(`/posts/${postId}/comments/${commentId}`),
+    onSuccess: invalidate,
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: async (commentId: string) => apiClient.post(`/posts/${postId}/comments/${commentId}/like`),
+    onSuccess: invalidate,
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: async () => apiClient.post(`/posts/${postId}/comments/${reportingId}/report`, { reason: reportReason }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      setReportingId(null);
+      setReportReason("");
+      Alert.alert("धन्यवाद", "आपकी रिपोर्ट भेज दी गई है।");
     },
   });
 
@@ -75,6 +99,12 @@ export function PostCommentsScreen({ route }: Props) {
       { text: "रद्द करें", style: "cancel" },
       { text: "हटाएं", style: "destructive", onPress: () => deleteMutation.mutate(commentId) },
     ]);
+  }
+
+  function startEdit(c: Comment) {
+    setEditingId(c.id);
+    setReplyTo(null);
+    setText(c.content);
   }
 
   function renderComment(c: Comment, isReply = false) {
@@ -89,14 +119,27 @@ export function PostCommentsScreen({ route }: Props) {
         </View>
         <View style={styles.commentActions}>
           <Text style={styles.commentDate}>{new Date(c.createdAt).toLocaleDateString("hi-IN")}</Text>
+          <TouchableOpacity style={styles.likeAction} onPress={() => likeMutation.mutate(c.id)}>
+            <Ionicons name={c.likedByMe ? "heart" : "heart-outline"} size={12} color={c.likedByMe ? colors.danger : colors.textMuted} />
+            <Text style={styles.likeActionText}>{c.likesCount}</Text>
+          </TouchableOpacity>
           {!isReply && (
             <TouchableOpacity onPress={() => setReplyTo({ id: c.id, name: c.citizen.name })}>
               <Text style={styles.replyAction}>जवाब दें</Text>
             </TouchableOpacity>
           )}
-          {c.citizen.id === citizen?.id && (
-            <TouchableOpacity onPress={() => confirmDelete(c.id)}>
-              <Text style={styles.deleteAction}>हटाएं</Text>
+          {c.citizen.id === citizen?.id ? (
+            <>
+              <TouchableOpacity onPress={() => startEdit(c)}>
+                <Text style={styles.editAction}>संपादित करें</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => confirmDelete(c.id)}>
+                <Text style={styles.deleteAction}>हटाएं</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity onPress={() => setReportingId(c.id)}>
+              <Text style={styles.reportAction}>रिपोर्ट करें</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -127,7 +170,20 @@ export function PostCommentsScreen({ route }: Props) {
       )}
 
       <View style={styles.inputRow}>
-        {replyTo && (
+        {editingId && (
+          <View style={styles.replyingBanner}>
+            <Text style={styles.replyingText}>टिप्पणी संपादित कर रहे हैं</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setEditingId(null);
+                setText("");
+              }}
+            >
+              <Ionicons name="close" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
+        {replyTo && !editingId && (
           <View style={styles.replyingBanner}>
             <Text style={styles.replyingText}>{replyTo.name} को जवाब दे रहे हैं</Text>
             <TouchableOpacity onPress={() => setReplyTo(null)}>
@@ -156,6 +212,33 @@ export function PostCommentsScreen({ route }: Props) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {reportingId && (
+        <View style={styles.reportOverlay}>
+          <View style={styles.reportModal}>
+            <Text style={styles.reportTitle}>टिप्पणी रिपोर्ट करें</Text>
+            <TextInput
+              style={styles.reportInput}
+              placeholder="कारण बताएं…"
+              value={reportReason}
+              onChangeText={setReportReason}
+              multiline
+            />
+            <View style={styles.reportActions}>
+              <TouchableOpacity onPress={() => setReportingId(null)}>
+                <Text style={styles.replyAction}>रद्द करें</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={!reportReason.trim()}
+                onPress={() => reportMutation.mutate()}
+                style={styles.reportSubmit}
+              >
+                <Text style={styles.reportSubmitText}>भेजें</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -171,10 +254,14 @@ const styles = StyleSheet.create({
   commentHeader: { flexDirection: "row", alignItems: "center", gap: 4 },
   commentAuthor: { fontSize: 13, fontWeight: "700", color: colors.text },
   commentContent: { fontSize: 13, color: colors.text, marginTop: 2 },
-  commentActions: { flexDirection: "row", gap: spacing.md, marginTop: 4, marginLeft: spacing.sm },
+  commentActions: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: 4, marginLeft: spacing.sm, flexWrap: "wrap" },
   commentDate: { fontSize: 10, color: colors.textFaint },
+  likeAction: { flexDirection: "row", alignItems: "center", gap: 2 },
+  likeActionText: { fontSize: 11, color: colors.textMuted, fontWeight: "600" },
   replyAction: { fontSize: 11, color: colors.navy, fontWeight: "600" },
+  editAction: { fontSize: 11, color: colors.textMuted, fontWeight: "600" },
   deleteAction: { fontSize: 11, color: colors.danger, fontWeight: "600" },
+  reportAction: { fontSize: 11, color: colors.warning, fontWeight: "600" },
   inputRow: { borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.md, backgroundColor: colors.surface },
   replyingBanner: {
     flexDirection: "row",
@@ -200,4 +287,29 @@ const styles = StyleSheet.create({
   },
   sendButton: { backgroundColor: colors.navy, borderRadius: radius.full, width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   sendButtonDisabled: { opacity: 0.5 },
+  reportOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.xl,
+  },
+  reportModal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, width: "100%" },
+  reportTitle: { fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: spacing.sm },
+  reportInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    minHeight: 70,
+    textAlignVertical: "top",
+    fontSize: 13,
+  },
+  reportActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.lg, marginTop: spacing.md },
+  reportSubmit: { backgroundColor: colors.danger, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: 6 },
+  reportSubmitText: { color: "#fff", fontWeight: "700" },
 });

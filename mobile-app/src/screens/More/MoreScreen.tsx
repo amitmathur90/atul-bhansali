@@ -54,6 +54,12 @@ export function MoreScreen({ navigation }: Props) {
         onPress={() => navigation.navigate("FeedTab", { screen: "FeedList" })}
       />
       <MenuRow
+        label="मेरी प्रोफाइल"
+        onPress={() =>
+          citizen && navigation.navigate("FeedTab", { screen: "UserProfile", params: { citizenId: citizen.id } })
+        }
+      />
+      <MenuRow
         label="सत्यापन के लिए आवेदन करें"
         onPress={() => navigation.navigate("VerificationRequest")}
       />

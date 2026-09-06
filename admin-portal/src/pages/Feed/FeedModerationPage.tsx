@@ -8,7 +8,8 @@ import { apiClient } from "../../lib/api-client";
 
 const TABS = [
   { key: "posts", label: "पोस्ट" },
-  { key: "reports", label: "रिपोर्ट्स" },
+  { key: "reports", label: "पोस्ट रिपोर्ट्स" },
+  { key: "commentReports", label: "टिप्पणी रिपोर्ट्स" },
   { key: "verification", label: "सत्यापन अनुरोध" },
 ] as const;
 
@@ -39,6 +40,7 @@ export function FeedModerationPage() {
 
       {tab === "posts" && <PostsSection />}
       {tab === "reports" && <ReportsSection />}
+      {tab === "commentReports" && <CommentReportsSection />}
       {tab === "verification" && <VerificationSection />}
     </div>
   );
@@ -209,6 +211,62 @@ function ReportsSection() {
                   खारिज करें
                 </Button>
               </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+// --- Comment Reports ---
+
+interface CommentReportItem {
+  id: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+  comment: { id: string; content: string; citizen: { id: string; name: string } };
+  reporter: { id: string; name: string; phone: string };
+}
+
+function CommentReportsSection() {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["comment-reports"],
+    queryFn: async () => (await apiClient.get<{ items: CommentReportItem[] }>("/comment-reports")).data.items,
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "REVIEWED" | "DISMISSED" }) =>
+      apiClient.patch(`/comment-reports/${id}`, { status }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["comment-reports"] }),
+  });
+
+  return (
+    <Card className="p-0">
+      {isLoading && <p className="p-4 text-sm text-slate-500">लोड हो रहा है…</p>}
+      {data?.length === 0 && <p className="p-4 text-sm text-slate-500">अभी तक कोई रिपोर्ट नहीं है।</p>}
+      <ul>
+        {data?.map((r) => (
+          <li key={r.id} className="flex items-start justify-between gap-4 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-slate-800 dark:text-slate-100">{r.comment.citizen.name}</p>
+                <Badge tone={r.status === "PENDING" ? "IN_PROGRESS" : r.status === "DISMISSED" ? "CANCELLED" : "COMPLETED"}>
+                  {r.status}
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{r.comment.content}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                <strong>कारण:</strong> {r.reason} — {r.reporter.name} द्वारा रिपोर्ट किया गया
+              </p>
+              <p className="mt-1 text-xs text-slate-400">{new Date(r.createdAt).toLocaleString()}</p>
+            </div>
+            {r.status === "PENDING" && (
+              <Button variant="secondary" onClick={() => reviewMutation.mutate({ id: r.id, status: "DISMISSED" })}>
+                खारिज करें
+              </Button>
             )}
           </li>
         ))}

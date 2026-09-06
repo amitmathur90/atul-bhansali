@@ -57,3 +57,31 @@ postReportsAdminRouter.patch(
     res.json(report);
   }),
 );
+
+export const commentReportsAdminRouter = Router();
+commentReportsAdminRouter.use(requireAuth, requireRole(StaffRole.MLA, StaffRole.SUPER_ADMIN));
+
+commentReportsAdminRouter.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const { status } = listQuerySchema.parse(req.query);
+    const items = await prisma.commentReport.findMany({
+      where: status ? { status } : {},
+      include: {
+        comment: { include: { citizen: { select: { id: true, name: true } } } },
+        reporter: { select: { id: true, name: true, phone: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json({ items });
+  }),
+);
+
+commentReportsAdminRouter.patch(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { status } = updateStatusSchema.parse(req.body);
+    const report = await prisma.commentReport.update({ where: { id: req.params.id }, data: { status } });
+    res.json(report);
+  }),
+);
