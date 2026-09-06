@@ -65,6 +65,10 @@ export type AdminComplaintsStackParamList = {
   AdminComplaintDetail: { id: string };
 };
 
+export type AdminFeedStackParamList = {
+  AdminFeedHome: undefined;
+};
+
 export type AdminMoreStackParamList = {
   AdminMoreMenu: undefined;
   AdminWards: undefined;
@@ -72,8 +76,6 @@ export type AdminMoreStackParamList = {
   AdminCategories: undefined;
   AdminStaff: undefined;
   AdminAnnouncements: undefined;
-  AdminFeedModeration: undefined;
-  AdminFeedAnalytics: undefined;
   AdminSettings: undefined;
   AdminReports: undefined;
   AdminCampaign: undefined;
@@ -82,5 +84,6 @@ export type AdminMoreStackParamList = {
 export type AdminTabParamList = {
   AdminDashboardTab: NavigatorScreenParams<AdminDashboardStackParamList>;
   AdminComplaintsTab: NavigatorScreenParams<AdminComplaintsStackParamList>;
+  AdminFeedTab: NavigatorScreenParams<AdminFeedStackParamList>;
   AdminMoreTab: NavigatorScreenParams<AdminMoreStackParamList>;
 };

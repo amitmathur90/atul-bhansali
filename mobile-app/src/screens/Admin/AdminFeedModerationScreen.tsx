@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { apiClient } from "../../lib/api-client";
 import { colors, radius, shadow, spacing } from "../../theme";
+import { AdminFeedAnalyticsScreen } from "./AdminFeedAnalyticsScreen";
 
 const REASON_LABELS: Record<string, string> = {
   SPAM: "स्पैम",
@@ -17,6 +18,7 @@ const REASON_LABELS: Record<string, string> = {
 
 const TABS = [
   { key: "posts", label: "पोस्ट" },
+  { key: "analytics", label: "एनालिटिक्स" },
   { key: "reports", label: "पोस्ट रिपोर्ट्स" },
   { key: "commentReports", label: "टिप्पणी रिपोर्ट्स" },
   { key: "verification", label: "सत्यापन" },
@@ -63,6 +65,7 @@ export function AdminFeedModerationScreen() {
       />
 
       {tab === "posts" && <PostsTab />}
+      {tab === "analytics" && <AdminFeedAnalyticsScreen />}
       {tab === "reports" && <ReportsTab onWarn={setWarnTarget} />}
       {tab === "commentReports" && <CommentReportsTab onWarn={setWarnTarget} />}
       {tab === "verification" && <VerificationTab />}

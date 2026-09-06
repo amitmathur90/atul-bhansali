@@ -31,8 +31,6 @@ export function AdminMoreMenuScreen({ navigation }: Props) {
 
       <MenuRow label="चुनाव अभियान" onPress={() => navigation.navigate("AdminCampaign")} />
       <MenuRow label="घोषणाएं / नोटिस" onPress={() => navigation.navigate("AdminAnnouncements")} />
-      <MenuRow label="फ़ीड मॉडरेशन" onPress={() => navigation.navigate("AdminFeedModeration")} />
-      <MenuRow label="फ़ीड एनालिटिक्स" onPress={() => navigation.navigate("AdminFeedAnalytics")} />
       <MenuRow label="रिपोर्ट्स" onPress={() => navigation.navigate("AdminReports")} />
 
       {isSuperAdmin && (

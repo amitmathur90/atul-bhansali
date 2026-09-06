@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { colors } from "../theme";
 import { AdminComplaintsStack } from "./AdminComplaintsStack";
 import { AdminDashboardStack } from "./AdminDashboardStack";
+import { AdminFeedStack } from "./AdminFeedStack";
 import { AdminMoreStack } from "./AdminMoreStack";
 import type { AdminTabParamList } from "./types";
 
@@ -34,6 +35,11 @@ export function AdminTabs() {
         name="AdminComplaintsTab"
         component={AdminComplaintsStack}
         options={{ title: "शिकायतें", tabBarIcon: tabIcon("document-text", "document-text-outline") }}
+      />
+      <Tab.Screen
+        name="AdminFeedTab"
+        component={AdminFeedStack}
+        options={{ title: "फ़ीड", tabBarIcon: tabIcon("people", "people-outline") }}
       />
       <Tab.Screen
         name="AdminMoreTab"

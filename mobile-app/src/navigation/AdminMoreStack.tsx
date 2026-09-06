@@ -3,8 +3,6 @@ import { AdminAnnouncementsScreen } from "../screens/Admin/AdminAnnouncementsScr
 import { AdminCampaignScreen } from "../screens/Admin/AdminCampaignScreen";
 import { AdminCategoriesScreen } from "../screens/Admin/AdminCategoriesScreen";
 import { AdminDepartmentsScreen } from "../screens/Admin/AdminDepartmentsScreen";
-import { AdminFeedAnalyticsScreen } from "../screens/Admin/AdminFeedAnalyticsScreen";
-import { AdminFeedModerationScreen } from "../screens/Admin/AdminFeedModerationScreen";
 import { AdminMoreMenuScreen } from "../screens/Admin/AdminMoreMenuScreen";
 import { AdminReportsScreen } from "../screens/Admin/AdminReportsScreen";
 import { AdminSettingsScreen } from "../screens/Admin/AdminSettingsScreen";
@@ -27,16 +25,6 @@ export function AdminMoreStack() {
         name="AdminAnnouncements"
         component={AdminAnnouncementsScreen}
         options={{ title: "घोषणाएं / नोटिस" }}
-      />
-      <Stack.Screen
-        name="AdminFeedModeration"
-        component={AdminFeedModerationScreen}
-        options={{ title: "फ़ीड मॉडरेशन" }}
-      />
-      <Stack.Screen
-        name="AdminFeedAnalytics"
-        component={AdminFeedAnalyticsScreen}
-        options={{ title: "फ़ीड एनालिटिक्स" }}
       />
       <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} options={{ title: "सेटिंग्स" }} />
       <Stack.Screen name="AdminReports" component={AdminReportsScreen} options={{ title: "रिपोर्ट्स" }} />
