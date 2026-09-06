@@ -2,7 +2,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { colors } from "../theme";
 import { BookAppointmentScreen } from "../screens/Appointments/BookAppointmentScreen";
 import { MyAppointmentsScreen } from "../screens/Appointments/MyAppointmentsScreen";
-import { CampaignScreen } from "../screens/Campaign/CampaignScreen";
 import { DevelopmentWorkDetailScreen } from "../screens/DevelopmentWorks/DevelopmentWorkDetailScreen";
 import { DevelopmentWorksListScreen } from "../screens/DevelopmentWorks/DevelopmentWorksListScreen";
 import { HomeScreen } from "../screens/HomeScreen";
@@ -50,11 +49,6 @@ export function HomeStack() {
         name="MyAppointments"
         component={MyAppointmentsScreen}
         options={{ title: "मेरे अनुरोध" }}
-      />
-      <Stack.Screen
-        name="Campaign"
-        component={CampaignScreen}
-        options={{ title: "चुनाव अभियान" }}
       />
     </Stack.Navigator>
   );

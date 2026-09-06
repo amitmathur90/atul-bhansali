@@ -13,6 +13,9 @@ export type HomeStackParamList = {
   WelfareSchemeDetail: { id: string };
   BookAppointment: undefined;
   MyAppointments: undefined;
+};
+
+export type CampaignStackParamList = {
   Campaign: undefined;
 };
 
@@ -38,5 +41,6 @@ export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList>;
   ComplaintTab: NavigatorScreenParams<MyTicketsStackParamList>;
   NoticeTab: NavigatorScreenParams<NoticeStackParamList>;
+  CampaignTab: NavigatorScreenParams<CampaignStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };

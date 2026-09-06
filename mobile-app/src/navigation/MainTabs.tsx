@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { colors } from "../theme";
+import { CampaignStack } from "./CampaignStack";
 import { HomeStack } from "./HomeStack";
 import { MyTicketsStack } from "./MyTicketsStack";
 import { NoticeStack } from "./NoticeStack";
@@ -40,6 +41,11 @@ export function MainTabs() {
         name="NoticeTab"
         component={NoticeStack}
         options={{ title: "नोटिस", tabBarIcon: tabIcon("notifications", "notifications-outline") }}
+      />
+      <Tab.Screen
+        name="CampaignTab"
+        component={CampaignStack}
+        options={{ title: "चुनाव", tabBarIcon: tabIcon("megaphone", "megaphone-outline") }}
       />
       <Tab.Screen
         name="ProfileTab"

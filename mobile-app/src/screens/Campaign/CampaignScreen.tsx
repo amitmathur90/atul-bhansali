@@ -18,10 +18,10 @@ import {
   View,
 } from "react-native";
 import { apiClient } from "../../lib/api-client";
-import type { HomeStackParamList } from "../../navigation/types";
+import type { CampaignStackParamList } from "../../navigation/types";
 import { colors, radius, shadow, spacing } from "../../theme";
 
-type Props = NativeStackScreenProps<HomeStackParamList, "Campaign">;
+type Props = NativeStackScreenProps<CampaignStackParamList, "Campaign">;
 
 interface CandidateAnnouncement {
   id: string;

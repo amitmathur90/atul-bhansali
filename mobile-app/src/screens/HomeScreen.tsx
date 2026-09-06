@@ -63,6 +63,14 @@ export function HomeScreen({ navigation }: Props) {
           <Text style={styles.secondaryButtonText}>मेरी शिकायतें देखें</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.tertiaryButton}
+          onPress={() => navigation.navigate("CampaignTab", { screen: "Campaign" })}
+        >
+          <Ionicons name="megaphone" size={18} color={colors.navy} />
+          <Text style={styles.tertiaryButtonText}>चुनाव अभियान</Text>
+        </TouchableOpacity>
+
         <View style={styles.iconRow}>
           <TouchableOpacity
             style={styles.iconAction}
@@ -181,6 +189,20 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   secondaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  tertiaryButton: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.navy,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    marginTop: spacing.md,
+  },
+  tertiaryButtonText: { color: colors.navy, fontWeight: "700", fontSize: 15 },
   iconRow: {
     flexDirection: "row",
     justifyContent: "space-between",
