@@ -42,8 +42,7 @@ export function HomeScreen({ navigation }: Props) {
           <View style={[styles.avatarRing, styles.avatarOverlap]}>
             <Image source={mlaPhoto} style={styles.avatar} resizeMode="cover" />
           </View>
-          <Text style={styles.name}>अतुल भंसाली</Text>
-          <Text style={styles.designation}>MLA, जोधपुर</Text>
+          <Text style={styles.name}>Citizen Connection</Text>
           <Text style={styles.tagline}>जनसेवा ही मेरा धर्म हैं</Text>
         </View>
 
@@ -162,7 +161,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   name: { fontSize: 19, fontWeight: "700", color: colors.navy },
-  designation: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   tagline: { fontSize: 13, color: colors.saffronDark, fontWeight: "600", marginTop: spacing.sm },
   primaryButton: {
     flexDirection: "row",

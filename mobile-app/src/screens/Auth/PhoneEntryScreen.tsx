@@ -60,7 +60,7 @@ export function PhoneEntryScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.formWrap}>
-          <Text style={styles.title}>अतुल भंसाली सिटीज़न कनेक्ट</Text>
+          <Text style={styles.title}>Citizen Connection</Text>
           <Text style={styles.subtitle}>जारी रखने के लिए अपना मोबाइल नंबर दर्ज करें</Text>
 
           <View style={styles.phoneRow}>

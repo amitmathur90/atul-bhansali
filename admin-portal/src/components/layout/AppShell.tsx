@@ -79,10 +79,10 @@ export function AppShell() {
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
       <aside className="w-64 shrink-0 bg-brand-navy">
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
-          <img src={mlaPhoto} alt="MLA" className="h-11 w-11 rounded-full border-2 border-brand-saffron object-cover" />
+          <img src={mlaPhoto} alt="Citizen Connection" className="h-11 w-11 rounded-full border-2 border-brand-saffron object-cover" />
           <div>
-            <p className="text-sm font-semibold text-white">अतुल भंसाली</p>
-            <p className="text-xs text-white/60">MLA, जोधपुर</p>
+            <p className="text-sm font-semibold text-white">Citizen Connection</p>
+            <p className="text-xs text-white/60">Admin Portal</p>
           </div>
         </div>
         <nav className="flex flex-col gap-1 p-3">
