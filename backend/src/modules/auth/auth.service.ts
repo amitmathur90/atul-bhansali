@@ -32,7 +32,9 @@ export async function issueTokenPair(ownerType: OwnerType, ownerId: string, role
 }
 
 export async function staffLogin(username: string, password: string) {
-  const staff = await prisma.staffMember.findUnique({ where: { username } });
+  const staff = await prisma.staffMember.findFirst({
+    where: { OR: [{ username }, { email: username }] },
+  });
   if (!staff || !staff.isActive) {
     throw new AppError(401, "INVALID_CREDENTIALS", "Invalid username or password");
   }

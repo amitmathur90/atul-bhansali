@@ -4,6 +4,7 @@ import { StaffRole } from "../enums";
 export const createStaffSchema = z.object({
   name: z.string().min(2).max(100),
   username: z.string().min(3).max(50),
+  email: z.string().email().max(100).optional(),
   password: z.string().min(6).max(100),
   role: z.nativeEnum(StaffRole).default(StaffRole.STAFF),
   phone: z

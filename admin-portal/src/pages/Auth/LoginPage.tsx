@@ -44,7 +44,7 @@ export function LoginPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
-              Username
+              Username or Email
             </label>
             <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
           </div>

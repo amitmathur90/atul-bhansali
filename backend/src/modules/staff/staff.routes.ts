@@ -35,6 +35,7 @@ staffRouter.get(
         id: true,
         name: true,
         username: true,
+        email: true,
         role: true,
         phone: true,
         designation: true,
@@ -54,14 +55,17 @@ staffRouter.post(
   "/",
   asyncHandler(async (req, res) => {
     const input = createStaffSchema.parse(req.body);
-    const existing = await prisma.staffMember.findUnique({ where: { username: input.username } });
-    if (existing) throw new AppError(409, "ALREADY_EXISTS", "Username already taken");
+    const existing = await prisma.staffMember.findFirst({
+      where: { OR: [{ username: input.username }, ...(input.email ? [{ email: input.email }] : [])] },
+    });
+    if (existing) throw new AppError(409, "ALREADY_EXISTS", "Username or email already taken");
 
     const passwordHash = await bcrypt.hash(input.password, 10);
     const staff = await prisma.staffMember.create({
       data: {
         name: input.name,
         username: input.username,
+        email: input.email,
         passwordHash,
         role: input.role,
         phone: input.phone,
@@ -129,6 +133,7 @@ staffRouter.patch(
         id: true,
         name: true,
         username: true,
+        email: true,
         role: true,
         phone: true,
         designation: true,

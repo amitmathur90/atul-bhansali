@@ -14,6 +14,7 @@ interface StaffMember {
   id: string;
   name: string;
   username: string;
+  email: string | null;
   role: string;
   designation: string | null;
   isActive: boolean;
@@ -25,6 +26,7 @@ export function StaffPage() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<string>(StaffRole.STAFF);
   const [designation, setDesignation] = useState("");
@@ -38,11 +40,20 @@ export function StaffPage() {
 
   const createMutation = useMutation({
     mutationFn: async () =>
-      (await apiClient.post("/staff", { name, username, password, role, designation: designation || undefined }))
-        .data,
+      (
+        await apiClient.post("/staff", {
+          name,
+          username,
+          email: email || undefined,
+          password,
+          role,
+          designation: designation || undefined,
+        })
+      ).data,
     onSuccess: () => {
       setName("");
       setUsername("");
+      setEmail("");
       setPassword("");
       setDesignation("");
       setError(null);
@@ -62,9 +73,15 @@ export function StaffPage() {
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Create staff</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+          <Input
+            placeholder="Email (optional, can log in with it)"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
           <Input
             placeholder="Password"
             type="password"
@@ -156,7 +173,9 @@ function StaffRow({
             {staff.name} {!staff.isActive && <Badge>INACTIVE</Badge>}
           </p>
           <p className="text-xs text-slate-500">
-            {staff.username} · {staff.role} {staff.designation ? `· ${staff.designation}` : ""}
+            {staff.username}
+            {staff.email ? ` · ${staff.email}` : ""} · {staff.role}{" "}
+            {staff.designation ? `· ${staff.designation}` : ""}
           </p>
         </button>
         {staff.isActive && (

@@ -256,6 +256,7 @@ model StaffMember {
   id           String    @id @default(uuid())
   name         String
   username     String    @unique
+  email        String?   @unique
   passwordHash String
   role         StaffRole @default(STAFF)
   phone        String?
