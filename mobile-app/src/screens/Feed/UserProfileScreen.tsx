@@ -14,9 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useMyIdentity } from "../../hooks/useMyIdentity";
 import { apiClient } from "../../lib/api-client";
 import type { FeedStackParamList } from "../../navigation/types";
-import { useAuthStore } from "../../store/authStore";
 import { colors, radius, shadow, spacing } from "../../theme";
 
 type Props = NativeStackScreenProps<FeedStackParamList, "UserProfile">;
@@ -55,8 +55,8 @@ interface ProfilePost {
 
 export function UserProfileScreen({ route, navigation }: Props) {
   const { citizenId } = route.params;
-  const me = useAuthStore((s) => s.citizen);
-  const isOwnProfile = me?.id === citizenId;
+  const myIdentity = useMyIdentity();
+  const isOwnProfile = myIdentity.id === citizenId;
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"posts" | "media" | "about">("posts");
   const [editing, setEditing] = useState(false);

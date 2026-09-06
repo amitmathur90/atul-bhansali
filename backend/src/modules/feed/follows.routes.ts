@@ -1,5 +1,6 @@
 import { NotificationType, OwnerType } from "@abc/shared";
 import { Router } from "express";
+import { resolveActingCitizenId } from "../../lib/actingCitizen";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
@@ -17,7 +18,7 @@ followsRouter.get(
       prisma.follow.count({ where: { followingId: citizenId } }),
       prisma.follow.count({ where: { followerId: citizenId } }),
     ]);
-    const viewerId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
+    const viewerId = await resolveActingCitizenId(req.user);
     const followedByMe = viewerId
       ? !!(await prisma.follow.findUnique({
           where: { followerId_followingId: { followerId: viewerId, followingId: citizenId } },
@@ -31,11 +32,11 @@ followsRouter.post(
   "/:citizenId/follow",
   requireAuth,
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens can follow others");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff can follow others");
     }
     const followingId = req.params.citizenId;
-    const followerId = req.user!.sub;
+    const followerId = (await resolveActingCitizenId(req.user))!;
     if (followerId === followingId) throw new AppError(400, "INVALID", "You cannot follow yourself");
 
     const existing = await prisma.follow.findUnique({

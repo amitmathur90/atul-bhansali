@@ -1,5 +1,6 @@
 import { createCommentSchema, createReportSchema, NotificationType, OwnerType, updateCommentSchema } from "@abc/shared";
 import { Router } from "express";
+import { resolveActingCitizenId } from "../../lib/actingCitizen";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
@@ -49,7 +50,7 @@ commentsRouter.get(
       },
       orderBy: { createdAt: "asc" },
     });
-    const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
+    const citizenId = await resolveActingCitizenId(req.user);
     res.json({ items: comments.map((c) => withLikeInfo(c, citizenId)) });
   }),
 );
@@ -58,9 +59,10 @@ commentsRouter.post(
   "/",
   requireAuth,
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens can comment");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff can comment");
     }
+    const actingCitizenId = (await resolveActingCitizenId(req.user))!;
     const post = await prisma.post.findUnique({ where: { id: req.params.postId } });
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
 
@@ -73,13 +75,13 @@ commentsRouter.post(
       }
     }
     const comment = await prisma.postComment.create({
-      data: { ...input, postId: req.params.postId, citizenId: req.user!.sub },
+      data: { ...input, postId: req.params.postId, citizenId: actingCitizenId },
       include: { citizen: { select: AUTHOR_SELECT }, likes: { select: { citizenId: true } } },
     });
 
-    const commenter = await prisma.citizen.findUnique({ where: { id: req.user!.sub }, select: { name: true } });
+    const commenter = await prisma.citizen.findUnique({ where: { id: actingCitizenId }, select: { name: true } });
     if (parent) {
-      if (parent.citizenId !== req.user!.sub) {
+      if (parent.citizenId !== actingCitizenId) {
         await notifyOwner(
           "CITIZEN",
           parent.citizenId,
@@ -89,7 +91,7 @@ commentsRouter.post(
           { relatedPostId: req.params.postId },
         );
       }
-    } else if (post.authorId !== req.user!.sub) {
+    } else if (post.authorId !== actingCitizenId) {
       await notifyOwner(
         "CITIZEN",
         post.authorId,
@@ -99,7 +101,7 @@ commentsRouter.post(
         { relatedPostId: req.params.postId },
       );
     }
-    res.status(201).json(withLikeInfo(comment, req.user!.sub));
+    res.status(201).json(withLikeInfo(comment, actingCitizenId));
   }),
 );
 
@@ -109,7 +111,8 @@ commentsRouter.patch(
   asyncHandler(async (req, res) => {
     const comment = await prisma.postComment.findUnique({ where: { id: req.params.commentId } });
     if (!comment) throw new AppError(404, "NOT_FOUND", "Comment not found");
-    if (comment.citizenId !== req.user!.sub) throw new AppError(403, "FORBIDDEN", "You can only edit your own comment");
+    const actingCitizenId = await resolveActingCitizenId(req.user);
+    if (comment.citizenId !== actingCitizenId) throw new AppError(403, "FORBIDDEN", "You can only edit your own comment");
     const input = updateCommentSchema.parse(req.body);
     const updated = await prisma.postComment.update({
       where: { id: req.params.commentId },
@@ -138,11 +141,11 @@ commentsRouter.post(
   "/:commentId/like",
   requireAuth,
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens can like comments");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff can like comments");
     }
     const commentId = req.params.commentId;
-    const citizenId = req.user!.sub;
+    const citizenId = (await resolveActingCitizenId(req.user))!;
     const existing = await prisma.commentLike.findUnique({ where: { commentId_citizenId: { commentId, citizenId } } });
     if (existing) {
       await prisma.commentLike.delete({ where: { id: existing.id } });

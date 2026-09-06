@@ -15,9 +15,9 @@ import {
   StyleSheet,
 } from "react-native";
 import { ReportModal } from "../../components/ReportModal";
+import { useMyIdentity } from "../../hooks/useMyIdentity";
 import { apiClient } from "../../lib/api-client";
 import type { FeedStackParamList } from "../../navigation/types";
-import { useAuthStore } from "../../store/authStore";
 import { colors, radius, spacing } from "../../theme";
 
 type Props = NativeStackScreenProps<FeedStackParamList, "PostComments">;
@@ -42,7 +42,7 @@ interface Comment {
 
 export function PostCommentsScreen({ route }: Props) {
   const { postId } = route.params;
-  const citizen = useAuthStore((s) => s.citizen);
+  const myIdentity = useMyIdentity();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
@@ -128,7 +128,7 @@ export function PostCommentsScreen({ route }: Props) {
               <Text style={styles.replyAction}>जवाब दें</Text>
             </TouchableOpacity>
           )}
-          {c.citizen.id === citizen?.id ? (
+          {c.citizen.id === myIdentity.id ? (
             <>
               <TouchableOpacity onPress={() => startEdit(c)}>
                 <Text style={styles.editAction}>संपादित करें</Text>
@@ -138,9 +138,11 @@ export function PostCommentsScreen({ route }: Props) {
               </TouchableOpacity>
             </>
           ) : (
-            <TouchableOpacity onPress={() => setReportingId(c.id)}>
-              <Text style={styles.reportAction}>रिपोर्ट करें</Text>
-            </TouchableOpacity>
+            !myIdentity.isStaff && (
+              <TouchableOpacity onPress={() => setReportingId(c.id)}>
+                <Text style={styles.reportAction}>रिपोर्ट करें</Text>
+              </TouchableOpacity>
+            )
           )}
         </View>
         {c.replies?.map((r) => renderComment(r, true))}

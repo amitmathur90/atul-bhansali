@@ -66,7 +66,12 @@ export type AdminComplaintsStackParamList = {
 };
 
 export type AdminFeedStackParamList = {
-  AdminFeedHome: undefined;
+  FeedList: undefined;
+  PostComments: { postId: string };
+  UserProfile: { citizenId: string };
+  HashtagPosts: { tag: string };
+  Search: undefined;
+  AdminFeedModeration: undefined;
 };
 
 export type AdminMoreStackParamList = {

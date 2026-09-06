@@ -25,6 +25,7 @@ export interface StaffProfile {
   email?: string | null;
   role: "STAFF" | "MLA" | "SUPER_ADMIN";
   designation?: string | null;
+  linkedCitizenId?: string | null;
 }
 
 interface AuthState {

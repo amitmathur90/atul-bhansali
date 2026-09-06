@@ -250,20 +250,23 @@ model Citizen {
   visiblePosts           PostVisibleTo[]
   warnings               UserWarning[]
   pollVotes              PollVote[]
+  linkedStaff            StaffMember?
 }
 
 model StaffMember {
-  id           String    @id @default(uuid())
-  name         String
-  username     String    @unique
-  email        String?   @unique
-  passwordHash String
-  role         StaffRole @default(STAFF)
-  phone        String?
-  designation  String?
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id @default(uuid())
+  name            String
+  username        String    @unique
+  email           String?   @unique
+  passwordHash    String
+  role            StaffRole @default(STAFF)
+  phone           String?
+  designation     String?
+  isActive        Boolean   @default(true)
+  linkedCitizenId String?   @unique
+  linkedCitizen   Citizen?  @relation(fields: [linkedCitizenId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   wardAssignments               StaffWardAssignment[]
   categoryAssignments           StaffCategoryAssignment[]

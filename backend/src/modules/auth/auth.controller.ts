@@ -5,6 +5,7 @@ import {
   refreshTokenSchema,
   staffLoginSchema,
 } from "@abc/shared";
+import { getOrCreateLinkedCitizenId } from "../../lib/actingCitizen";
 import { env } from "../../config/env";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
@@ -34,8 +35,9 @@ export const staffLoginHandler = asyncHandler(async (req, res) => {
   const { username, password } = staffLoginSchema.parse(req.body);
   const staff = await staffLogin(username, password);
   const tokens = await issueTokenPair(OwnerType.STAFF, staff.id, staff.role);
+  const linkedCitizenId = await getOrCreateLinkedCitizenId(staff.id);
   const { passwordHash: _passwordHash, ...safeStaff } = staff;
-  res.json({ staff: safeStaff, ...tokens });
+  res.json({ staff: { ...safeStaff, linkedCitizenId }, ...tokens });
 });
 
 export const refreshHandler = asyncHandler(async (req, res) => {
@@ -64,6 +66,7 @@ export const meHandler = asyncHandler(async (req, res) => {
 
   const staff = await prisma.staffMember.findUnique({ where: { id: req.user.sub } });
   if (!staff) throw new AppError(404, "NOT_FOUND", "Account not found");
+  const linkedCitizenId = await getOrCreateLinkedCitizenId(staff.id);
   const { passwordHash: _passwordHash, ...safeStaff } = staff;
-  res.json({ ownerType: OwnerType.STAFF, profile: safeStaff });
+  res.json({ ownerType: OwnerType.STAFF, profile: { ...safeStaff, linkedCitizenId } });
 });

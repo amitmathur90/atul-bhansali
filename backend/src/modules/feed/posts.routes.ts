@@ -10,6 +10,7 @@ import {
 } from "@abc/shared";
 import { Router } from "express";
 import { z } from "zod";
+import { resolveActingCitizenId } from "../../lib/actingCitizen";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { extractHashtags } from "../../lib/hashtags";
@@ -109,7 +110,7 @@ postsRouter.get(
   asyncHandler(async (req, res) => {
     const { authorId, city, q, page, pageSize } = listQuerySchema.parse(req.query);
     const isStaff = req.user?.ownerType === OwnerType.STAFF;
-    const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
+    const citizenId = await resolveActingCitizenId(req.user);
     const where = {
       ...(isStaff ? {} : { isHidden: false, ...(await visibilityFilter(citizenId)) }),
       ...(authorId ? { authorId } : {}),
@@ -151,7 +152,7 @@ postsRouter.get(
     });
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
     const isStaff = req.user?.ownerType === OwnerType.STAFF;
-    const citizenId = req.user?.ownerType === OwnerType.CITIZEN ? req.user.sub : undefined;
+    const citizenId = await resolveActingCitizenId(req.user);
     if (!isStaff && post.isHidden) throw new AppError(404, "NOT_FOUND", "Post not found");
 
     if (!isStaff && post.authorId !== citizenId) {
@@ -178,9 +179,10 @@ postsRouter.post(
   requireAuth,
   upload.single("image"),
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens can create posts");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff can create posts");
     }
+    const actingCitizenId = (await resolveActingCitizenId(req.user))!;
     let mediaUrl: string | undefined;
     let mediaType = req.body.mediaType;
     if (req.file) {
@@ -218,7 +220,7 @@ postsRouter.post(
 
     let pollOptionLabels: string[] = [];
     if (pollQuestion) {
-      const author = await prisma.citizen.findUnique({ where: { id: req.user!.sub }, select: { isVerified: true } });
+      const author = await prisma.citizen.findUnique({ where: { id: actingCitizenId }, select: { isVerified: true } });
       if (!author?.isVerified) throw new AppError(403, "FORBIDDEN", "Only verified accounts can create polls");
       pollOptionLabels = (pollOptions ?? "")
         .split(",")
@@ -232,7 +234,7 @@ postsRouter.post(
     const post = await prisma.post.create({
       data: {
         ...postFields,
-        authorId: req.user!.sub,
+        authorId: actingCitizenId,
         hashtags: {
           connectOrCreate: hashtags.map((tag) => ({ where: { tag }, create: { tag } })),
         },
@@ -258,16 +260,16 @@ postsRouter.post(
       },
     });
 
-    const author = await prisma.citizen.findUnique({ where: { id: req.user!.sub }, select: { name: true } });
+    const author = await prisma.citizen.findUnique({ where: { id: actingCitizenId }, select: { name: true } });
     if (post.visibility === PostVisibility.PUBLIC) {
       await notifyFollowers(
-        req.user!.sub,
+        actingCitizenId,
         `${author?.name ?? "एक उपयोगकर्ता"} ने नई पोस्ट साझा की`,
         post.content.slice(0, 140),
         NotificationType.NEW_POST,
       );
     }
-    if (post.sharedPostId && post.sharedPost && post.sharedPost.author.id !== req.user!.sub) {
+    if (post.sharedPostId && post.sharedPost && post.sharedPost.author.id !== actingCitizenId) {
       await notifyOwner(
         "CITIZEN",
         post.sharedPost.author.id,
@@ -277,7 +279,7 @@ postsRouter.post(
         { relatedPostId: post.sharedPostId },
       );
     }
-    const [serialized] = await serializePosts([post], req.user!.sub);
+    const [serialized] = await serializePosts([post], actingCitizenId);
     res.status(201).json(serialized);
   }),
 );
@@ -288,7 +290,8 @@ postsRouter.patch(
   asyncHandler(async (req, res) => {
     const post = await prisma.post.findUnique({ where: { id: req.params.id } });
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
-    if (post.authorId !== req.user!.sub) throw new AppError(403, "FORBIDDEN", "You can only edit your own posts");
+    const actingCitizenId = await resolveActingCitizenId(req.user);
+    if (post.authorId !== actingCitizenId) throw new AppError(403, "FORBIDDEN", "You can only edit your own posts");
     const input = updatePostSchema.parse(req.body);
     const updated = await prisma.post.update({
       where: { id: req.params.id },
@@ -331,12 +334,12 @@ postsRouter.post(
   "/:id/react",
   requireAuth,
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens can react to posts");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff can react to posts");
     }
     const { type } = reactSchema.parse(req.body);
     const postId = req.params.id;
-    const citizenId = req.user!.sub;
+    const citizenId = (await resolveActingCitizenId(req.user))!;
     const post = await prisma.post.findUnique({ where: { id: postId } });
     if (!post) throw new AppError(404, "NOT_FOUND", "Post not found");
 
@@ -421,8 +424,8 @@ postsRouter.post(
   "/:id/poll/vote",
   requireAuth,
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens can vote");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff can vote");
     }
     const { optionId } = votePollSchema.parse(req.body);
     const poll = await prisma.poll.findUnique({ where: { postId: req.params.id } });
@@ -430,7 +433,7 @@ postsRouter.post(
     const option = await prisma.pollOption.findUnique({ where: { id: optionId } });
     if (!option || option.pollId !== poll.id) throw new AppError(400, "INVALID_OPTION", "Invalid poll option");
 
-    const citizenId = req.user!.sub;
+    const citizenId = (await resolveActingCitizenId(req.user))!;
     const existing = await prisma.pollVote.findUnique({ where: { pollId_citizenId: { pollId: poll.id, citizenId } } });
     if (existing) {
       await prisma.pollVote.update({ where: { id: existing.id }, data: { optionId } });

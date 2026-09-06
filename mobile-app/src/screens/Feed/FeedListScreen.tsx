@@ -20,10 +20,10 @@ import {
 } from "react-native";
 import { HashtagText } from "../../components/HashtagText";
 import { ReportModal } from "../../components/ReportModal";
+import { useMyIdentity } from "../../hooks/useMyIdentity";
 import { apiClient } from "../../lib/api-client";
 import { timeAgo } from "../../lib/timeAgo";
 import type { FeedStackParamList } from "../../navigation/types";
-import { useAuthStore } from "../../store/authStore";
 import { colors, radius, shadow, spacing } from "../../theme";
 
 type Props = NativeStackScreenProps<FeedStackParamList, "FeedList">;
@@ -81,7 +81,7 @@ interface TrendingHashtag {
 }
 
 export function FeedListScreen({ navigation }: Props) {
-  const citizen = useAuthStore((s) => s.citizen);
+  const myIdentity = useMyIdentity();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [image, setImage] = useState<{ uri: string; name: string; type: string } | null>(null);
@@ -96,11 +96,11 @@ export function FeedListScreen({ navigation }: Props) {
   const [localOnly, setLocalOnly] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["feed-posts", { localOnly, city: citizen?.city }],
+    queryKey: ["feed-posts", { localOnly, city: myIdentity.city }],
     queryFn: async () =>
       (
         await apiClient.get<{ items: FeedPost[] }>("/posts", {
-          params: localOnly && citizen?.city ? { city: citizen.city } : {},
+          params: localOnly && myIdentity.city ? { city: myIdentity.city } : {},
         })
       ).data.items,
   });
@@ -313,7 +313,7 @@ export function FeedListScreen({ navigation }: Props) {
               </View>
             </View>
 
-            {citizen?.city && (
+            {myIdentity.city && (
               <View style={styles.localFilterRow}>
                 <TouchableOpacity
                   style={[styles.localFilterChip, !localOnly && styles.localFilterChipActive]}
@@ -326,7 +326,7 @@ export function FeedListScreen({ navigation }: Props) {
                   onPress={() => setLocalOnly(true)}
                 >
                   <Text style={[styles.localFilterText, localOnly && styles.localFilterTextActive]}>
-                    📍 मेरा क्षेत्र ({citizen.city})
+                    📍 मेरा क्षेत्र ({myIdentity.city})
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -372,7 +372,7 @@ export function FeedListScreen({ navigation }: Props) {
                   </Text>
                 </View>
               </TouchableOpacity>
-              {item.author.id === citizen?.id ? (
+              {item.author.id === myIdentity.id ? (
                 <TouchableOpacity
                   onPress={() =>
                     Alert.alert("पोस्ट हटाएं?", "यह क्रिया वापस नहीं ली जा सकती।", [
@@ -454,9 +454,11 @@ export function FeedListScreen({ navigation }: Props) {
                 <Ionicons name="share-social-outline" size={16} color={colors.textMuted} />
                 <Text style={styles.actionText}>शेयर करें</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} onPress={() => setReportingId(item.id)}>
-                <Ionicons name="flag-outline" size={15} color={colors.textMuted} />
-              </TouchableOpacity>
+              {!myIdentity.isStaff && (
+                <TouchableOpacity style={styles.actionButton} onPress={() => setReportingId(item.id)}>
+                  <Ionicons name="flag-outline" size={15} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}

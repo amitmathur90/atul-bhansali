@@ -1,5 +1,6 @@
 import { OwnerType, updateProfileSchema } from "@abc/shared";
 import { Router } from "express";
+import { resolveActingCitizenId } from "../../lib/actingCitizen";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
@@ -34,14 +35,14 @@ profileRouter.get(
   "/me/analytics",
   requireAuth,
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens have analytics");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff have analytics");
     }
-    const citizen = await prisma.citizen.findUnique({ where: { id: req.user!.sub } });
+    const citizenId = (await resolveActingCitizenId(req.user))!;
+    const citizen = await prisma.citizen.findUnique({ where: { id: citizenId } });
     if (!citizen?.isVerified) {
       throw new AppError(403, "FORBIDDEN", "Analytics are available to verified accounts only");
     }
-    const citizenId = req.user!.sub;
     const [totalPosts, totalComments, totalReactions, followersCount, topPost] = await Promise.all([
       prisma.post.count({ where: { authorId: citizenId } }),
       prisma.postComment.count({ where: { post: { authorId: citizenId } } }),
@@ -68,9 +69,10 @@ profileRouter.patch(
   requireAuth,
   upload.single("photo"),
   asyncHandler(async (req, res) => {
-    if (req.user!.ownerType !== OwnerType.CITIZEN) {
-      throw new AppError(403, "FORBIDDEN", "Only citizens have a feed profile");
+    if (req.user!.ownerType !== OwnerType.CITIZEN && req.user!.ownerType !== OwnerType.STAFF) {
+      throw new AppError(403, "FORBIDDEN", "Only citizens or staff have a feed profile");
     }
+    const citizenId = (await resolveActingCitizenId(req.user))!;
     let profilePhotoUrl: string | undefined;
     if (req.file) {
       profilePhotoUrl = await storageProvider.upload(
@@ -80,7 +82,7 @@ profileRouter.patch(
     }
     const input = updateProfileSchema.parse(req.body);
     const updated = await prisma.citizen.update({
-      where: { id: req.user!.sub },
+      where: { id: citizenId },
       data: { ...input, ...(profilePhotoUrl ? { profilePhotoUrl } : {}) },
     });
     res.json(updated);
