@@ -6,11 +6,14 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   RefreshControl,
+  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -170,6 +173,8 @@ export function FeedListScreen({ navigation }: Props) {
       setImage({ uri: a.uri, name: a.fileName ?? `photo-${Date.now()}.jpg`, type: a.mimeType ?? "image/jpeg" });
     }
   }
+
+  const [viewerImage, setViewerImage] = useState<{ uri: string; authorName: string; content: string } | null>(null);
 
   const [reportingId, setReportingId] = useState<string | null>(null);
   const reportMutation = useMutation({
@@ -390,7 +395,14 @@ export function FeedListScreen({ navigation }: Props) {
             </View>
             <HashtagText content={item.content} style={styles.postContent} onHashtagPress={goToHashtag} />
             {item.mediaUrl && item.mediaType === "IMAGE" && (
-              <Image source={{ uri: item.mediaUrl }} style={styles.postImage} />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() =>
+                  setViewerImage({ uri: item.mediaUrl!, authorName: item.author.name, content: item.content })
+                }
+              >
+                <Image source={{ uri: item.mediaUrl }} style={styles.postImage} resizeMode="contain" />
+              </TouchableOpacity>
             )}
 
             {item.sharedPost && (
@@ -400,7 +412,18 @@ export function FeedListScreen({ navigation }: Props) {
                   {item.sharedPost.content}
                 </Text>
                 {item.sharedPost.mediaUrl && item.sharedPost.mediaType === "IMAGE" && (
-                  <Image source={{ uri: item.sharedPost.mediaUrl }} style={styles.sharedImage} />
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() =>
+                      setViewerImage({
+                        uri: item.sharedPost!.mediaUrl!,
+                        authorName: item.sharedPost!.author.name,
+                        content: item.sharedPost!.content,
+                      })
+                    }
+                  >
+                    <Image source={{ uri: item.sharedPost.mediaUrl }} style={styles.sharedImage} resizeMode="contain" />
+                  </TouchableOpacity>
                 )}
               </View>
             )}
@@ -472,6 +495,25 @@ export function FeedListScreen({ navigation }: Props) {
           onSubmit={(reasonType, details) => reportMutation.mutate({ reasonType, details })}
         />
       )}
+
+      <Modal visible={!!viewerImage} transparent animationType="fade" onRequestClose={() => setViewerImage(null)}>
+        <View style={styles.viewerOverlay}>
+          <TouchableOpacity style={styles.viewerCloseButton} onPress={() => setViewerImage(null)} hitSlop={12}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          {viewerImage && (
+            <>
+              <Image source={{ uri: viewerImage.uri }} style={styles.viewerImage} resizeMode="contain" />
+              {viewerImage.content ? (
+                <ScrollView style={styles.viewerCaptionBox} contentContainerStyle={{ padding: spacing.lg }}>
+                  <Text style={styles.viewerAuthorName}>{viewerImage.authorName}</Text>
+                  <Text style={styles.viewerCaptionText}>{viewerImage.content}</Text>
+                </ScrollView>
+              ) : null}
+            </>
+          )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -629,7 +671,13 @@ const styles = StyleSheet.create({
   followButtonText: { fontSize: 11, fontWeight: "600", color: colors.navy },
   followButtonTextActive: { color: "#fff" },
   postContent: { fontSize: 14, color: colors.text, marginTop: spacing.sm, lineHeight: 20 },
-  postImage: { width: "100%", height: 200, borderRadius: radius.md, marginTop: spacing.sm },
+  postImage: {
+    width: "100%",
+    height: 260,
+    borderRadius: radius.md,
+    marginTop: spacing.sm,
+    backgroundColor: colors.background,
+  },
   sharedPostBox: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -639,7 +687,13 @@ const styles = StyleSheet.create({
   },
   sharedAuthorName: { fontSize: 12, fontWeight: "700", color: colors.text },
   sharedContent: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
-  sharedImage: { width: "100%", height: 120, borderRadius: radius.sm, marginTop: spacing.xs },
+  sharedImage: {
+    width: "100%",
+    height: 160,
+    borderRadius: radius.sm,
+    marginTop: spacing.xs,
+    backgroundColor: colors.background,
+  },
   pollBlock: {
     marginTop: spacing.sm,
     padding: spacing.sm,
@@ -698,4 +752,16 @@ const styles = StyleSheet.create({
   },
   actionButton: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionText: { fontSize: 12, color: colors.textMuted, fontWeight: "600" },
+  viewerOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" },
+  viewerCloseButton: {
+    position: "absolute",
+    top: 48,
+    right: spacing.lg,
+    zIndex: 1,
+    padding: spacing.xs,
+  },
+  viewerImage: { width: Dimensions.get("window").width, height: "70%" },
+  viewerCaptionBox: { maxHeight: "25%" },
+  viewerAuthorName: { color: "#fff", fontWeight: "700", fontSize: 14, marginBottom: spacing.xs },
+  viewerCaptionText: { color: "#eee", fontSize: 14, lineHeight: 20 },
 });
