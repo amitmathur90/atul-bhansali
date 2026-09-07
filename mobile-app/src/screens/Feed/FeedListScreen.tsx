@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   },
   actionButton: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionText: { fontSize: 12, color: colors.textMuted, fontWeight: "600" },
-  viewerOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" },
+  viewerOverlay: { flex: 1, backgroundColor: "#000", justifyContent: "center" },
   viewerCloseButton: {
     position: "absolute",
     top: 48,
