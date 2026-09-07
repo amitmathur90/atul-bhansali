@@ -1,4 +1,16 @@
+import fs from "node:fs";
+import path from "node:path";
 import sharp from "sharp";
+
+// Render's container has no Devanagari-capable font installed system-wide, so plain
+// font-family="sans-serif" text renders as tofu boxes for Hindi names. Embedding this
+// font directly in the SVG via @font-face (base64) sidesteps system font discovery
+// entirely — it renders identically regardless of what fonts the host has. Falls back
+// to the SVG's own default font for any glyph outside this font's Devanagari coverage
+// (e.g. Latin names), which every real host has for plain ASCII.
+const DEVANAGARI_FONT_BASE64 = fs
+  .readFileSync(path.join(__dirname, "../../assets/fonts/NotoSansDevanagari-Bold.woff2"))
+  .toString("base64");
 
 interface PosterTemplateGeometry {
   imageWidth: number;
@@ -54,10 +66,18 @@ export async function composePoster(
   const textX = Math.round(template.nameX * width);
   const textY = Math.round(template.nameY * height);
   const textSvg = Buffer.from(
-    `<svg width="${width}" height="${height}">
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <style type="text/css">
+          @font-face {
+            font-family: 'PosterName';
+            src: url(data:font/woff2;base64,${DEVANAGARI_FONT_BASE64}) format('woff2');
+          }
+        </style>
+      </defs>
       <text
         x="${textX}" y="${textY}"
-        font-family="sans-serif" font-weight="700" font-size="${template.nameFontSize}"
+        font-family="PosterName, sans-serif" font-weight="700" font-size="${template.nameFontSize}"
         fill="${escapeXml(template.nameColor)}"
         text-anchor="${textAnchor}" dominant-baseline="central"
       >${escapeXml(name)}</text>
