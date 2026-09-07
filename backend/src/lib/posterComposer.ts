@@ -11,7 +11,12 @@ import sharp from "sharp";
 // system/librsvg font stack, so the exact same bundled font file renders identically
 // on every platform.
 const FONT_FAMILY = "PosterName";
-GlobalFonts.registerFromPath(path.join(__dirname, "../../assets/fonts/NotoSansDevanagari-Bold.ttf"), FONT_FAMILY);
+const FONT_PATH = path.join(__dirname, "../../assets/fonts/NotoSansDevanagari-Bold.ttf");
+const fontRegistered = GlobalFonts.registerFromPath(FONT_PATH, FONT_FAMILY);
+// eslint-disable-next-line no-console
+console.log(
+  `[posterComposer] font registered=${fontRegistered} has("${FONT_FAMILY}")=${GlobalFonts.has(FONT_FAMILY)} families=${JSON.stringify(GlobalFonts.families.map((f) => f.family))} path=${FONT_PATH}`,
+);
 
 interface PosterTemplateGeometry {
   imageWidth: number;
