@@ -1,20 +1,17 @@
-import fs from "node:fs";
 import path from "node:path";
+import { createCanvas, GlobalFonts } from "@napi-rs/canvas";
 import sharp from "sharp";
 
-// Render's container has no Devanagari-capable font installed system-wide, so plain
-// font-family="sans-serif" text renders as tofu boxes for Hindi names. Embedding this
-// font directly in the SVG via @font-face (base64) sidesteps system font discovery
-// entirely — it renders identically regardless of what fonts the host has. Falls back
-// to the SVG's own default font for any glyph outside this font's Devanagari coverage
-// (e.g. Latin names), which every real host has for plain ASCII.
-//
-// Plain TTF, not WOFF2: confirmed on production that the Linux build of sharp/librsvg
-// silently fails to decode WOFF2 (likely no Brotli support compiled in), even though it
-// works fine locally on Windows — raw TrueType has no such dependency and is universal.
-const DEVANAGARI_FONT_BASE64 = fs
-  .readFileSync(path.join(__dirname, "../../assets/fonts/NotoSansDevanagari-Bold.ttf"))
-  .toString("base64");
+// SVG text via sharp/librsvg turned out to depend on whatever system font stack the
+// host happens to have — @font-face-embedded fonts (tried both WOFF2 and TTF) silently
+// failed to load on Render's production Linux build even though they worked locally on
+// Windows, and Render's container has no Devanagari-capable font installed anyway, so
+// plain font-family="sans-serif" rendered Hindi names as tofu boxes. @napi-rs/canvas
+// does its own font loading via GlobalFonts.registerFromPath() independent of the
+// system/librsvg font stack, so the exact same bundled font file renders identically
+// on every platform.
+const FONT_FAMILY = "PosterName";
+GlobalFonts.registerFromPath(path.join(__dirname, "../../assets/fonts/NotoSansDevanagari-Bold.ttf"), FONT_FAMILY);
 
 interface PosterTemplateGeometry {
   imageWidth: number;
@@ -29,20 +26,20 @@ interface PosterTemplateGeometry {
   nameAlign: string;
 }
 
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+function renderNameOverlay(template: PosterTemplateGeometry, name: string): Buffer {
+  const { imageWidth: width, imageHeight: height } = template;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+  ctx.font = `bold ${template.nameFontSize}px "${FONT_FAMILY}"`;
+  ctx.fillStyle = template.nameColor;
+  ctx.textAlign = (template.nameAlign as "left" | "center" | "right") ?? "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(name, template.nameX * width, template.nameY * height);
+  return canvas.toBuffer("image/png");
 }
 
 // Composites a citizen's selfie (cropped to a circle) and their name onto a poster
-// template at the admin-defined relative positions. Both overlays are built as small
-// SVGs and rasterized by sharp/librsvg rather than using a font-rendering canvas lib,
-// since sharp+libvips (already a dependency for image resizing) covers this natively
-// without adding another native module.
+// template at the admin-defined relative positions.
 export async function composePoster(
   template: PosterTemplateGeometry,
   templateBuffer: Buffer,
@@ -66,33 +63,13 @@ export async function composePoster(
     .png()
     .toBuffer();
 
-  const textAnchor = template.nameAlign === "left" ? "start" : template.nameAlign === "right" ? "end" : "middle";
-  const textX = Math.round(template.nameX * width);
-  const textY = Math.round(template.nameY * height);
-  const textSvg = Buffer.from(
-    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <style type="text/css">
-          @font-face {
-            font-family: 'PosterName';
-            src: url(data:font/ttf;base64,${DEVANAGARI_FONT_BASE64}) format('truetype');
-          }
-        </style>
-      </defs>
-      <text
-        x="${textX}" y="${textY}"
-        font-family="PosterName, sans-serif" font-weight="700" font-size="${template.nameFontSize}"
-        fill="${escapeXml(template.nameColor)}"
-        text-anchor="${textAnchor}" dominant-baseline="central"
-      >${escapeXml(name)}</text>
-    </svg>`,
-  );
+  const textOverlay = renderNameOverlay(template, name);
 
   return sharp(templateBuffer)
     .resize(width, height)
     .composite([
       { input: circularSelfie, top: Math.round(selfieCenterY - radius), left: Math.round(selfieCenterX - radius) },
-      { input: textSvg, top: 0, left: 0 },
+      { input: textOverlay, top: 0, left: 0 },
     ])
     .jpeg({ quality: 90, mozjpeg: true })
     .toBuffer();

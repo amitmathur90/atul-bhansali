@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@abc/shared": "*",
+    "@napi-rs/canvas": "^1.0.8",
     "@prisma/client": "^5.20.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
