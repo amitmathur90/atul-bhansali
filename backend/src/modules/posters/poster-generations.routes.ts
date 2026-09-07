@@ -21,12 +21,18 @@ posterGenerationsRouter.post(
     if (!citizenId) throw new AppError(403, "FORBIDDEN", "Only citizens or staff can create a poster");
     if (!req.file) throw new AppError(400, "MISSING_SELFIE", "A selfie photo is required");
 
-    const { templateId, name } = generatePosterSchema.parse(req.body);
+    const { templateId, name, city, ward, designation, message } = generatePosterSchema.parse(req.body);
     const template = await prisma.posterTemplate.findUnique({ where: { id: templateId } });
     if (!template) throw new AppError(404, "NOT_FOUND", "Poster template not found");
 
     const templateBuffer = await storageProvider.read(template.imageUrl);
-    const resultBuffer = await composePoster(template, templateBuffer, req.file.buffer, name);
+    const resultBuffer = await composePoster(template, templateBuffer, req.file.buffer, {
+      name,
+      city,
+      ward,
+      designation,
+      message,
+    });
     const resultUrl = await storageProvider.upload(
       { buffer: resultBuffer, originalName: "poster.jpg", mimeType: "image/jpeg" },
       "generated-posters",

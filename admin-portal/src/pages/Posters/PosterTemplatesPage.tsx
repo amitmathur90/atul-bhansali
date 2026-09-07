@@ -16,6 +16,7 @@ interface PosterTemplate {
   selfieX: number;
   selfieY: number;
   selfieSize: number;
+  selfieShape: string;
   nameX: number;
   nameY: number;
   nameFontSize: number;
@@ -29,11 +30,25 @@ interface Geometry {
   selfieX: number;
   selfieY: number;
   selfieSize: number;
+  selfieShape: string;
   nameX: number;
   nameY: number;
 }
 
-const DEFAULT_GEOMETRY: Geometry = { selfieX: 0.5, selfieY: 0.28, selfieSize: 0.35, nameX: 0.5, nameY: 0.7 };
+const DEFAULT_GEOMETRY: Geometry = {
+  selfieX: 0.5,
+  selfieY: 0.28,
+  selfieSize: 0.35,
+  selfieShape: "circle",
+  nameX: 0.5,
+  nameY: 0.7,
+};
+
+const SHAPE_OPTIONS = [
+  { value: "circle", label: "गोल (Circle)" },
+  { value: "square", label: "चौकोर (Square)" },
+  { value: "rounded", label: "गोल कोने (Rounded)" },
+];
 
 export function PosterTemplatesPage() {
   const queryClient = useQueryClient();
@@ -124,6 +139,7 @@ function TemplateEditor({
           selfieX: template.selfieX,
           selfieY: template.selfieY,
           selfieSize: template.selfieSize,
+          selfieShape: template.selfieShape,
           nameX: template.nameX,
           nameY: template.nameY,
         }
@@ -149,6 +165,7 @@ function TemplateEditor({
       form.append("selfieX", String(geometry.selfieX));
       form.append("selfieY", String(geometry.selfieY));
       form.append("selfieSize", String(geometry.selfieSize));
+      form.append("selfieShape", geometry.selfieShape);
       form.append("nameX", String(geometry.nameX));
       form.append("nameY", String(geometry.nameY));
       form.append("nameFontSize", String(nameFontSize));
@@ -180,6 +197,26 @@ function TemplateEditor({
           <Input placeholder="टेम्पलेट का नाम" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="श्रेणी (वैकल्पिक)" value={category} onChange={(e) => setCategory(e.target.value)} />
           <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm" />
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">सेल्फी आकार</label>
+            <div className="flex gap-2">
+              {SHAPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setGeometry((g) => ({ ...g, selfieShape: opt.value }))}
+                  className={`rounded-md border px-2.5 py-1.5 text-xs font-medium ${
+                    geometry.selfieShape === opt.value
+                      ? "border-brand-navy bg-brand-navy/10 text-brand-navy"
+                      : "border-slate-300 text-slate-600 dark:border-slate-700"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -279,7 +316,9 @@ function PosterPositionEditor({
       <img src={imageUrl} alt="" className="pointer-events-none block w-full" draggable={false} />
 
       <div
-        className="absolute rounded-full border-2 border-dashed border-orange-500 bg-orange-500/20"
+        className={`absolute border-2 border-dashed border-orange-500 bg-orange-500/20 ${
+          geometry.selfieShape === "circle" ? "rounded-full" : geometry.selfieShape === "rounded" ? "rounded-2xl" : ""
+        }`}
         style={{
           left: `${geometry.selfieX * 100}%`,
           top: `${geometry.selfieY * 100}%`,

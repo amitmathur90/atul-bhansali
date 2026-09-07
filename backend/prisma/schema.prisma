@@ -824,12 +824,14 @@ model PosterTemplate {
   imageWidth  Int
   imageHeight Int
 
-  // Selfie placement — relative (0-1) coordinates of the circle's CENTER, and its
-  // diameter as a fraction of the template width, so one definition works at any
-  // output resolution the template image is later re-encoded at.
-  selfieX    Float
-  selfieY    Float
-  selfieSize Float
+  // Selfie placement — relative (0-1) coordinates of the shape's CENTER, and its
+  // size (diameter, or side length for square/rounded) as a fraction of the template
+  // width, so one definition works at any output resolution the template image is
+  // later re-encoded at.
+  selfieX     Float
+  selfieY     Float
+  selfieSize  Float
+  selfieShape String @default("circle")
 
   // Name text placement — relative (0-1) coordinates of the text's center point.
   nameX        Float

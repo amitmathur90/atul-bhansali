@@ -6,6 +6,7 @@ export const createPosterTemplateSchema = z.object({
   selfieX: z.coerce.number().min(0).max(1),
   selfieY: z.coerce.number().min(0).max(1),
   selfieSize: z.coerce.number().min(0.02).max(1),
+  selfieShape: z.enum(["circle", "square", "rounded"]).default("circle"),
   nameX: z.coerce.number().min(0).max(1),
   nameY: z.coerce.number().min(0).max(1),
   nameFontSize: z.coerce.number().int().min(8).max(300).default(32),
@@ -22,6 +23,10 @@ export type UpdatePosterTemplateInput = z.infer<typeof updatePosterTemplateSchem
 export const generatePosterSchema = z.object({
   templateId: z.string().uuid(),
   name: z.string().min(1).max(60),
+  city: z.string().max(60).optional(),
+  ward: z.string().max(60).optional(),
+  designation: z.string().max(60).optional(),
+  message: z.string().max(150).optional(),
 });
 export type GeneratePosterInput = z.infer<typeof generatePosterSchema>;
 

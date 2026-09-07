@@ -89,6 +89,10 @@ export function CreatePosterScreen({ navigation }: Props) {
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [selfie, setSelfie] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [name, setName] = useState(citizen?.name ?? staff?.name ?? "");
+  const [city, setCity] = useState(citizen?.city ?? "");
+  const [ward, setWard] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [message, setMessage] = useState("");
   const [generated, setGenerated] = useState<{ id: string; resultUrl: string } | null>(null);
   const [caption, setCaption] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +107,10 @@ export function CreatePosterScreen({ navigation }: Props) {
       const form = new FormData();
       form.append("templateId", templateId!);
       form.append("name", name.trim());
+      if (city.trim()) form.append("city", city.trim());
+      if (ward.trim()) form.append("ward", ward.trim());
+      if (designation.trim()) form.append("designation", designation.trim());
+      if (message.trim()) form.append("message", message.trim());
       form.append("selfie", selfie as unknown as Blob);
       return (await apiClient.post<{ id: string; resultUrl: string }>("/poster-generations", form)).data;
     },
@@ -135,6 +143,9 @@ export function CreatePosterScreen({ navigation }: Props) {
     setSelfie(null);
     setTemplateId(null);
     setCaption("");
+    setWard("");
+    setDesignation("");
+    setMessage("");
   }
 
   if (generated) {
@@ -200,6 +211,11 @@ export function CreatePosterScreen({ navigation }: Props) {
             <Text style={styles.templateName} numberOfLines={1}>
               {t.name}
             </Text>
+            {t.category && (
+              <Text style={styles.templateCategory} numberOfLines={1}>
+                {t.category}
+              </Text>
+            )}
           </TouchableOpacity>
         )}
       />
@@ -221,6 +237,12 @@ export function CreatePosterScreen({ navigation }: Props) {
 
       <Text style={styles.sectionTitle}>3. अपना नाम दर्ज करें</Text>
       <TextInput style={styles.input} placeholder="आपका नाम" value={name} onChangeText={setName} />
+
+      <Text style={styles.optionalLabel}>अतिरिक्त विवरण (वैकल्पिक)</Text>
+      <TextInput style={styles.input} placeholder="शहर" value={city} onChangeText={setCity} />
+      <TextInput style={styles.input} placeholder="वार्ड" value={ward} onChangeText={setWard} />
+      <TextInput style={styles.input} placeholder="पदनाम" value={designation} onChangeText={setDesignation} />
+      <TextInput style={styles.input} placeholder="समर्थक संदेश" value={message} onChangeText={setMessage} />
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -257,6 +279,8 @@ const styles = StyleSheet.create({
   templateCardActive: { borderColor: colors.navy },
   templateThumb: { width: "100%", height: 130, borderRadius: radius.sm, backgroundColor: colors.background },
   templateName: { fontSize: 11, color: colors.text, marginTop: 4, textAlign: "center" },
+  templateCategory: { fontSize: 9, color: colors.textFaint, textAlign: "center" },
+  optionalLabel: { fontSize: 11, color: colors.textFaint, fontWeight: "600", marginTop: spacing.xs },
   selfieRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   selfiePreview: { width: 72, height: 72, borderRadius: 36 },
   selfiePickBtn: {
