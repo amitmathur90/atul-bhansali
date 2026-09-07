@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TouchableOpacity } from "react-native";
+import { CreatePosterScreen } from "../screens/Feed/CreatePosterScreen";
 import { FeedListScreen } from "../screens/Feed/FeedListScreen";
 import { HashtagPostsScreen } from "../screens/Feed/HashtagPostsScreen";
 import { PostCommentsScreen } from "../screens/Feed/PostCommentsScreen";
@@ -39,6 +40,7 @@ export function FeedStack() {
         options={({ route }) => ({ title: `#${route.params.tag}` })}
       />
       <Stack.Screen name="Search" component={SearchScreen} options={{ title: "खोजें" }} />
+      <Stack.Screen name="CreatePoster" component={CreatePosterScreen} options={{ title: "पोस्टर बनाएं" }} />
     </Stack.Navigator>
   );
 }

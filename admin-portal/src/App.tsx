@@ -15,6 +15,7 @@ import { DashboardPage } from "./pages/Dashboard/DashboardPage";
 import { DevelopmentProjectsPage } from "./pages/DevelopmentProjects/DevelopmentProjectsPage";
 import { EmergencyContactsPage } from "./pages/EmergencyContacts/EmergencyContactsPage";
 import { LookupsPage } from "./pages/Lookups/LookupsPage";
+import { PosterTemplatesPage } from "./pages/Posters/PosterTemplatesPage";
 import { ReportsPage } from "./pages/Reports/ReportsPage";
 import { RoleHome } from "./pages/RoleHome";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
@@ -47,6 +48,7 @@ function App() {
             <Route path="/welfare-schemes" element={<WelfareSchemesPage />} />
             <Route path="/campaign" element={<CampaignPage />} />
             <Route path="/feed" element={<FeedModerationPage />} />
+            <Route path="/poster-templates" element={<PosterTemplatesPage />} />
             <Route path="/emergency-contacts" element={<EmergencyContactsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/lookups" element={<LookupsPage />} />

@@ -44,4 +44,12 @@ export class LocalDiskStorageProvider implements StorageProvider {
 
     return `${publicUrl}/uploads/${folder}/${filename}`;
   }
+
+  async read(url: string): Promise<Buffer> {
+    const marker = "/uploads/";
+    const index = url.indexOf(marker);
+    if (index === -1) throw new Error(`Not a local-disk URL: ${url}`);
+    const relativePath = url.slice(index + marker.length);
+    return fs.readFile(path.join(UPLOADS_ROOT, relativePath));
+  }
 }

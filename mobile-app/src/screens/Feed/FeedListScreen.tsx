@@ -301,9 +301,18 @@ export function FeedListScreen({ navigation }: Props) {
               )}
 
               <View style={styles.composerRow}>
-                <TouchableOpacity onPress={handlePickImage} style={styles.composerImageButton}>
-                  <Ionicons name="image-outline" size={20} color={colors.navy} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: "row" }}>
+                  <TouchableOpacity onPress={handlePickImage} style={styles.composerImageButton}>
+                    <Ionicons name="image-outline" size={20} color={colors.navy} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("CreatePoster")}
+                    style={styles.composerImageButton}
+                  >
+                    <Ionicons name="person-circle-outline" size={20} color={colors.navy} />
+                    <Text style={styles.posterButtonText}>पोस्टर बनाएं</Text>
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity
                   style={[styles.postButton, !content.trim() && styles.postButtonDisabled]}
                   disabled={!content.trim() || createMutation.isPending}
@@ -642,7 +651,8 @@ const styles = StyleSheet.create({
   localFilterText: { fontSize: 12, fontWeight: "600", color: colors.textMuted },
   localFilterTextActive: { color: "#fff" },
   composerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.sm },
-  composerImageButton: { padding: 6 },
+  composerImageButton: { flexDirection: "row", alignItems: "center", gap: 4, padding: 6 },
+  posterButtonText: { fontSize: 12, fontWeight: "600", color: colors.navy },
   postButton: { backgroundColor: colors.navy, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 8 },
   postButtonDisabled: { opacity: 0.5 },
   postButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },

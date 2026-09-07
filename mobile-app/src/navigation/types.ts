@@ -26,6 +26,7 @@ export type FeedStackParamList = {
   UserProfile: { citizenId: string };
   HashtagPosts: { tag: string };
   Search: undefined;
+  CreatePoster: undefined;
 };
 
 export type MyTicketsStackParamList = {
@@ -71,6 +72,7 @@ export type AdminFeedStackParamList = {
   UserProfile: { citizenId: string };
   HashtagPosts: { tag: string };
   Search: undefined;
+  CreatePoster: undefined;
   AdminFeedModeration: undefined;
 };
 

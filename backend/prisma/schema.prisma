@@ -251,6 +251,7 @@ model Citizen {
   warnings               UserWarning[]
   pollVotes              PollVote[]
   linkedStaff            StaffMember?
+  posterGenerations      PosterGeneration[]
 }
 
 model StaffMember {
@@ -277,6 +278,7 @@ model StaffMember {
   createdCampaignEvents         CampaignEvent[]
   reviewedVerifications         VerificationRequest[]
   issuedWarnings                UserWarning[]
+  createdPosterTemplates        PosterTemplate[]
 }
 
 model StaffWardAssignment {
@@ -809,5 +811,56 @@ model UserWarning {
   issuedBy   StaffMember @relation(fields: [issuedById], references: [id])
   createdAt  DateTime    @default(now())
 
+  @@index([citizenId])
+}
+
+// --- Personalized campaign posters ---
+
+model PosterTemplate {
+  id          String  @id @default(uuid())
+  name        String
+  category    String?
+  imageUrl    String
+  imageWidth  Int
+  imageHeight Int
+
+  // Selfie placement — relative (0-1) coordinates of the circle's CENTER, and its
+  // diameter as a fraction of the template width, so one definition works at any
+  // output resolution the template image is later re-encoded at.
+  selfieX    Float
+  selfieY    Float
+  selfieSize Float
+
+  // Name text placement — relative (0-1) coordinates of the text's center point.
+  nameX        Float
+  nameY        Float
+  nameFontSize Int    @default(32)
+  nameColor    String @default("#FFFFFF")
+  nameAlign    String @default("center")
+  nameMaxWidth Float?
+
+  isActive    Boolean     @default(true)
+  createdById String
+  createdBy   StaffMember @relation(fields: [createdById], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  generations PosterGeneration[]
+
+  @@index([isActive])
+}
+
+model PosterGeneration {
+  id              String         @id @default(uuid())
+  templateId      String
+  template        PosterTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  citizenId       String
+  citizen         Citizen        @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  name            String
+  resultUrl       String
+  publishedPostId String?
+  createdAt       DateTime       @default(now())
+
+  @@index([templateId])
   @@index([citizenId])
 }
