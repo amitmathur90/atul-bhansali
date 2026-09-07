@@ -8,8 +8,12 @@ import sharp from "sharp";
 // entirely — it renders identically regardless of what fonts the host has. Falls back
 // to the SVG's own default font for any glyph outside this font's Devanagari coverage
 // (e.g. Latin names), which every real host has for plain ASCII.
+//
+// Plain TTF, not WOFF2: confirmed on production that the Linux build of sharp/librsvg
+// silently fails to decode WOFF2 (likely no Brotli support compiled in), even though it
+// works fine locally on Windows — raw TrueType has no such dependency and is universal.
 const DEVANAGARI_FONT_BASE64 = fs
-  .readFileSync(path.join(__dirname, "../../assets/fonts/NotoSansDevanagari-Bold.woff2"))
+  .readFileSync(path.join(__dirname, "../../assets/fonts/NotoSansDevanagari-Bold.ttf"))
   .toString("base64");
 
 interface PosterTemplateGeometry {
@@ -71,7 +75,7 @@ export async function composePoster(
         <style type="text/css">
           @font-face {
             font-family: 'PosterName';
-            src: url(data:font/woff2;base64,${DEVANAGARI_FONT_BASE64}) format('woff2');
+            src: url(data:font/ttf;base64,${DEVANAGARI_FONT_BASE64}) format('truetype');
           }
         </style>
       </defs>
