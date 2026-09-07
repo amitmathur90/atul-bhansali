@@ -39,6 +39,10 @@ function renderNameOverlay(template: PosterTemplateGeometry, name: string): Buff
   ctx.fillStyle = template.nameColor;
   ctx.textAlign = (template.nameAlign as "left" | "center" | "right") ?? "center";
   ctx.textBaseline = "middle";
+  // eslint-disable-next-line no-console
+  console.log(
+    `[posterComposer] readback ctx.font="${ctx.font}" measure=${JSON.stringify(ctx.measureText(name))} nameCodepoints=${JSON.stringify(Array.from(name).map((c) => c.codePointAt(0)?.toString(16)))}`,
+  );
   ctx.fillText(name, template.nameX * width, template.nameY * height);
   return canvas.toBuffer("image/png");
 }
