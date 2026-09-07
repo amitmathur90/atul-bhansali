@@ -1,9 +1,23 @@
+import { Ionicons } from "@expo/vector-icons";
 import { CampaignEventType, CampaignPostType, PartyStatus } from "@abc/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { apiClient } from "../../lib/api-client";
 import { colors, radius, shadow, spacing } from "../../theme";
+
+async function pickImage(): Promise<{ uri: string; name: string; type: string } | null> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    Alert.alert("अनुमति आवश्यक", "फोटो जोड़ने के लिए गैलरी एक्सेस की अनुमति दें।");
+    return null;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7 });
+  if (result.canceled || !result.assets[0]) return null;
+  const a = result.assets[0];
+  return { uri: a.uri, name: a.fileName ?? `photo-${Date.now()}.jpg`, type: a.mimeType ?? "image/jpeg" };
+}
 
 function extractErrorMessage(err: unknown): string {
   const message = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
@@ -170,6 +184,7 @@ function CampaignPostsTab() {
 interface CandidateAnnouncement {
   id: string;
   candidateName: string;
+  profileImageUrl: string | null;
   position: string;
   constituency: string;
   partyStatus: string;
@@ -187,6 +202,7 @@ function CandidateAnnouncementsTab() {
   const [partyStatus, setPartyStatus] = useState<string>(PartyStatus.PARTY);
   const [partyName, setPartyName] = useState("");
   const [message, setMessage] = useState("");
+  const [image, setImage] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -204,6 +220,7 @@ function CandidateAnnouncementsTab() {
       form.append("partyStatus", partyStatus);
       if (partyStatus === PartyStatus.PARTY && partyName) form.append("partyName", partyName);
       form.append("message", message);
+      if (image) form.append("image", image as unknown as Blob);
       return apiClient.post("/candidate-announcements", form);
     },
     onSuccess: () => {
@@ -212,6 +229,7 @@ function CandidateAnnouncementsTab() {
       setConstituency("");
       setPartyName("");
       setMessage("");
+      setImage(null);
       setError(null);
       queryClient.invalidateQueries({ queryKey: ["admin-candidate-announcements"] });
     },
@@ -269,6 +287,19 @@ function CandidateAnnouncementsTab() {
             onChangeText={setMessage}
             multiline
           />
+          {image ? (
+            <View style={styles.imagePreviewRow}>
+              <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+              <TouchableOpacity style={styles.removeImageBtn} onPress={() => setImage(null)}>
+                <Ionicons name="close-circle" size={22} color={colors.danger} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.photoPickBtn} onPress={async () => setImage(await pickImage())}>
+              <Ionicons name="image-outline" size={18} color={colors.navy} />
+              <Text style={styles.photoPickText}>उम्मीदवार की फोटो जोड़ें (वैकल्पिक)</Text>
+            </TouchableOpacity>
+          )}
           {error && <Text style={styles.errorText}>{error}</Text>}
           <TouchableOpacity
             style={[styles.addButton, !canSubmit && styles.addButtonDisabled]}
@@ -282,6 +313,13 @@ function CandidateAnnouncementsTab() {
       }
       renderItem={({ item: c }) => (
         <View style={styles.row}>
+          {c.profileImageUrl ? (
+            <Image source={{ uri: c.profileImageUrl }} style={styles.candidateThumb} />
+          ) : (
+            <View style={styles.candidateThumbPlaceholder}>
+              <Ionicons name="person" size={18} color={colors.textFaint} />
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>{c.candidateName}</Text>
             <Text style={styles.rowMeta}>
@@ -513,5 +551,29 @@ const styles = StyleSheet.create({
   rowMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   feedbackMessage: { fontSize: 13, color: colors.text, marginTop: 4 },
   deleteText: { fontSize: 12, color: colors.danger, fontWeight: "700" },
+  photoPickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 10,
+    alignSelf: "flex-start",
+  },
+  photoPickText: { fontSize: 12, color: colors.navy, fontWeight: "600" },
+  imagePreviewRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  imagePreview: { width: 64, height: 64, borderRadius: radius.sm },
+  removeImageBtn: { padding: 4 },
+  candidateThumb: { width: 40, height: 40, borderRadius: 20 },
+  candidateThumbPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   markReadText: { fontSize: 12, color: colors.navy, fontWeight: "700" },
 });
