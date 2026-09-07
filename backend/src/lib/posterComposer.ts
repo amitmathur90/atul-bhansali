@@ -35,7 +35,7 @@ function renderNameOverlay(template: PosterTemplateGeometry, name: string): Buff
   const { imageWidth: width, imageHeight: height } = template;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
-  ctx.font = `bold ${template.nameFontSize}px "${FONT_FAMILY}"`;
+  ctx.font = `${template.nameFontSize}px ${FONT_FAMILY}`;
   ctx.fillStyle = template.nameColor;
   ctx.textAlign = (template.nameAlign as "left" | "center" | "right") ?? "center";
   ctx.textBaseline = "middle";
