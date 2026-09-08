@@ -29,6 +29,7 @@ import { searchRouter } from "./modules/feed/search.routes";
 import { verificationRouter } from "./modules/feed/verification.routes";
 import { warningsRouter } from "./modules/feed/warnings.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
+import { appBannerRouter } from "./modules/app-banner/app-banner.routes";
 import { posterGenerationsRouter } from "./modules/posters/poster-generations.routes";
 import { posterTemplatesRouter } from "./modules/posters/poster-templates.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
@@ -83,6 +84,7 @@ app.use("/api/feed-analytics", feedAnalyticsRouter);
 app.use("/api/verification-requests", verificationRouter);
 app.use("/api/poster-templates", posterTemplatesRouter);
 app.use("/api/poster-generations", posterGenerationsRouter);
+app.use("/api/app-banners", appBannerRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } });

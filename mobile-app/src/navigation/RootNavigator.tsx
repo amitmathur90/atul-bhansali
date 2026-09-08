@@ -1,6 +1,7 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { AppBannerPopup } from "../components/AppBannerPopup";
 import { useOfflineSync } from "../hooks/useOfflineSync";
 import { registerForPushNotifications } from "../lib/notifications";
 import { useAuthStore } from "../store/authStore";
@@ -30,8 +31,11 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      {accessToken ? ownerType === "STAFF" ? <AdminTabs /> : <MainTabs /> : <AuthStack />}
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        {accessToken ? ownerType === "STAFF" ? <AdminTabs /> : <MainTabs /> : <AuthStack />}
+      </NavigationContainer>
+      <AppBannerPopup />
+    </>
   );
 }

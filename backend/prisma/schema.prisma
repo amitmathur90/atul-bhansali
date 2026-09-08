@@ -279,6 +279,7 @@ model StaffMember {
   reviewedVerifications         VerificationRequest[]
   issuedWarnings                UserWarning[]
   createdPosterTemplates        PosterTemplate[]
+  createdAppBanners             AppBanner[]
 }
 
 model StaffWardAssignment {
@@ -865,4 +866,21 @@ model PosterGeneration {
 
   @@index([templateId])
   @@index([citizenId])
+}
+
+// A full-screen popup shown once the app has finished loading, before the citizen
+// reaches the login screen. Admin manages the image and can activate at most one
+// at a time (enforced in the route, not the schema, so history can be kept).
+model AppBanner {
+  id          String   @id @default(uuid())
+  imageUrl    String
+  imageWidth  Int
+  imageHeight Int
+  isActive    Boolean  @default(false)
+  createdById String
+  createdBy   StaffMember @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
 }

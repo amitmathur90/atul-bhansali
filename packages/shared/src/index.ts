@@ -13,3 +13,4 @@ export * from "./schemas/welfare-scheme";
 export * from "./schemas/campaign";
 export * from "./schemas/feed";
 export * from "./schemas/poster";
+export * from "./schemas/app-banner";

@@ -4,6 +4,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { queryClient } from "./lib/query-client";
 import { AnnouncementsPage } from "./pages/Announcements/AnnouncementsPage";
+import { AppBannerPage } from "./pages/AppBanner/AppBannerPage";
 import { AppointmentsPage } from "./pages/Appointments/AppointmentsPage";
 import { LoginPage } from "./pages/Auth/LoginPage";
 import { CampaignPage } from "./pages/Campaign/CampaignPage";
@@ -49,6 +50,7 @@ function App() {
             <Route path="/campaign" element={<CampaignPage />} />
             <Route path="/feed" element={<FeedModerationPage />} />
             <Route path="/poster-templates" element={<PosterTemplatesPage />} />
+            <Route path="/app-banner" element={<AppBannerPage />} />
             <Route path="/emergency-contacts" element={<EmergencyContactsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/lookups" element={<LookupsPage />} />
