@@ -5,9 +5,11 @@ import {
 } from "@abc/shared";
 import { Prisma } from "@prisma/client";
 import { Router } from "express";
+import { z } from "zod";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
+import { recordMediaAsset } from "../../lib/recordMediaAsset";
 import { requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { upload } from "../../middleware/upload.middleware";
 import { storageProvider } from "../../storage/storage.factory";
@@ -96,15 +98,52 @@ developmentProjectsRouter.post(
 
     const existingCount = await prisma.gallery.count({ where: { projectId: project.id } });
     const urls = await Promise.all(
-      files.map((f) =>
-        storageProvider.upload(
+      files.map(async (f) => {
+        const url = await storageProvider.upload(
           { buffer: f.buffer, originalName: f.originalname, mimeType: f.mimetype },
           "development-projects",
-        ),
-      ),
+        );
+        await recordMediaAsset({ url, mimeType: f.mimetype, uploadedById: req.user!.sub });
+        return url;
+      }),
     );
     await prisma.gallery.createMany({
       data: urls.map((imageUrl, i) => ({
+        projectId: project.id,
+        imageUrl,
+        order: existingCount + i,
+      })),
+    });
+
+    const gallery = await prisma.gallery.findMany({
+      where: { projectId: project.id },
+      orderBy: { order: "asc" },
+    });
+    res.status(201).json({ items: gallery });
+  }),
+);
+
+const galleryFromLibrarySchema = z.object({ imageUrls: z.array(z.string().url()).min(1).max(20) });
+
+developmentProjectsRouter.post(
+  "/:id/gallery/from-library",
+  requireAuth,
+  requireRole(StaffRole.MLA, StaffRole.SUPER_ADMIN),
+  asyncHandler(async (req, res) => {
+    const project = await prisma.developmentProject.findUnique({ where: { id: req.params.id } });
+    if (!project) throw new AppError(404, "NOT_FOUND", "Development project not found");
+
+    const { imageUrls } = galleryFromLibrarySchema.parse(req.body);
+    const owned = await prisma.mediaAsset.findMany({
+      where: { url: { in: imageUrls }, uploadedById: req.user!.sub },
+    });
+    if (owned.length !== imageUrls.length) {
+      throw new AppError(400, "INVALID_IMAGE", "One or more selected images were not found in your media library");
+    }
+
+    const existingCount = await prisma.gallery.count({ where: { projectId: project.id } });
+    await prisma.gallery.createMany({
+      data: imageUrls.map((imageUrl, i) => ({
         projectId: project.id,
         imageUrl,
         order: existingCount + i,

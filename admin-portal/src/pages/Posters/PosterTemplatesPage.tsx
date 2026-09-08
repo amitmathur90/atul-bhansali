@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
+import { MediaPickerButtons } from "../../components/media/MediaPickerButtons";
+import type { MediaAsset } from "../../components/media/MediaLibraryModal";
 import { apiClient } from "../../lib/api-client";
 import { extractErrorMessage } from "../../lib/errors";
 
@@ -130,6 +132,7 @@ function TemplateEditor({
   onSaved: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [libraryImageUrl, setLibraryImageUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(template?.imageUrl ?? null);
   const [name, setName] = useState(template?.name ?? "");
   const [category, setCategory] = useState(template?.category ?? "");
@@ -150,11 +153,16 @@ function TemplateEditor({
   const [nameAlign, setNameAlign] = useState(template?.nameAlign ?? "center");
   const [error, setError] = useState<string | null>(null);
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  function handleFile(f: File) {
     setFile(f);
+    setLibraryImageUrl(null);
     setPreviewUrl(URL.createObjectURL(f));
+  }
+
+  function handleLibrarySelect(asset: MediaAsset) {
+    setFile(null);
+    setLibraryImageUrl(asset.url);
+    setPreviewUrl(asset.url);
   }
 
   const saveMutation = useMutation({
@@ -172,6 +180,7 @@ function TemplateEditor({
       form.append("nameColor", nameColor);
       form.append("nameAlign", nameAlign);
       if (file) form.append("image", file);
+      else if (libraryImageUrl) form.append("imageUrl", libraryImageUrl);
       if (template) return apiClient.patch(`/poster-templates/${template.id}`, form);
       return apiClient.post("/poster-templates", form);
     },
@@ -179,7 +188,7 @@ function TemplateEditor({
     onError: (err) => setError(extractErrorMessage(err)),
   });
 
-  const canSubmit = !!name && (!!template || !!file);
+  const canSubmit = !!name && (!!template || !!file || !!libraryImageUrl);
 
   return (
     <Card className="flex flex-col gap-4">
@@ -196,7 +205,7 @@ function TemplateEditor({
         <div className="flex flex-col gap-3">
           <Input placeholder="टेम्पलेट का नाम" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="श्रेणी (वैकल्पिक)" value={category} onChange={(e) => setCategory(e.target.value)} />
-          <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm" />
+          <MediaPickerButtons onFile={handleFile} onLibrarySelect={handleLibrarySelect} />
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">सेल्फी आकार</label>

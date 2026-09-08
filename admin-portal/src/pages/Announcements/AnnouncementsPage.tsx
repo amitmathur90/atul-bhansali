@@ -7,6 +7,8 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
+import { MediaPickerButtons } from "../../components/media/MediaPickerButtons";
+import type { MediaAsset } from "../../components/media/MediaLibraryModal";
 import { apiClient } from "../../lib/api-client";
 import { extractErrorMessage } from "../../lib/errors";
 
@@ -38,6 +40,7 @@ export function AnnouncementsPage() {
   const [body, setBody] = useState("");
   const [type, setType] = useState<string>(AnnouncementType.EVENT);
   const [image, setImage] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<Announcement | null>(null);
@@ -48,10 +51,16 @@ export function AnnouncementsPage() {
     queryFn: async () => (await apiClient.get<{ items: Announcement[] }>("/announcements")).data.items,
   });
 
-  function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
+  function handleImageFile(file: File) {
     setImage(file);
-    setImagePreview(file ? URL.createObjectURL(file) : null);
+    setImageUrl(null);
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  function handleImageLibrarySelect(asset: MediaAsset) {
+    setImage(null);
+    setImageUrl(asset.url);
+    setImagePreview(asset.url);
   }
 
   function resetForm() {
@@ -60,6 +69,7 @@ export function AnnouncementsPage() {
     setBody("");
     setType(AnnouncementType.EVENT);
     setImage(null);
+    setImageUrl(null);
     setImagePreview(null);
     setError(null);
   }
@@ -70,6 +80,7 @@ export function AnnouncementsPage() {
     setBody(a.body);
     setType(a.type);
     setImage(null);
+    setImageUrl(null);
     setImagePreview(a.imageUrl ?? null);
     setError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -82,6 +93,7 @@ export function AnnouncementsPage() {
       form.append("body", body);
       form.append("type", type);
       if (image) form.append("image", image);
+      else if (imageUrl) form.append("imageUrl", imageUrl);
       // No explicit Content-Type — the browser sets the multipart boundary automatically.
       if (editingId) return (await apiClient.patch(`/announcements/${editingId}`, form)).data;
       return (await apiClient.post("/announcements", form)).data;
@@ -155,12 +167,7 @@ export function AnnouncementsPage() {
             ))}
           </Select>
           <div className="flex items-center gap-3">
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/heic"
-              onChange={handleImageSelected}
-              className="text-sm text-slate-600 dark:text-slate-300"
-            />
+            <MediaPickerButtons onFile={handleImageFile} onLibrarySelect={handleImageLibrarySelect} />
             {imagePreview && (
               <img src={imagePreview} alt="Preview" className="h-12 w-12 rounded-md object-cover" />
             )}

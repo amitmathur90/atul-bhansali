@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
+import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import { useWards } from "../../hooks/useLookups";
 import { apiClient } from "../../lib/api-client";
 import { extractErrorMessage } from "../../lib/errors";
@@ -131,6 +132,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -147,6 +149,15 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
+
+  const addFromLibraryMutation = useMutation({
+    mutationFn: async (imageUrls: string[]) =>
+      apiClient.post(`/development-projects/${project.id}/gallery/from-library`, { imageUrls }),
+    onSuccess: () => {
+      setLibraryOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["development-projects"] });
+    },
+  });
 
   return (
     <Card>
@@ -173,22 +184,38 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
       )}
 
       <div className="mt-3 flex items-center justify-between">
-        <label className="cursor-pointer text-sm text-brand-navy hover:underline">
-          {uploading ? "Uploading…" : "+ Add photos"}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleFilesSelected}
-            disabled={uploading}
-          />
-        </label>
+        <div className="flex items-center gap-3">
+          <label className="cursor-pointer text-sm text-brand-navy hover:underline">
+            {uploading ? "Uploading…" : "+ Add photos"}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFilesSelected}
+              disabled={uploading}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setLibraryOpen(true)}
+            className="text-sm text-brand-navy hover:underline"
+          >
+            + मीडिया लाइब्रेरी से जोड़ें
+          </button>
+        </div>
         <Button variant="danger" onClick={onDelete}>
           Delete
         </Button>
       </div>
+      {libraryOpen && (
+        <MediaLibraryModal
+          multiple
+          onClose={() => setLibraryOpen(false)}
+          onInsert={(assets) => addFromLibraryMutation.mutate(assets.map((a) => a.url))}
+        />
+      )}
     </Card>
   );
 }

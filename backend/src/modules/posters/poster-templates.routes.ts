@@ -1,12 +1,11 @@
 import { createPosterTemplateSchema, OwnerType, StaffRole, updatePosterTemplateSchema } from "@abc/shared";
 import { Router } from "express";
-import sharp from "sharp";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
+import { resolveImageInput } from "../../lib/resolveImageInput";
 import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { upload } from "../../middleware/upload.middleware";
-import { storageProvider } from "../../storage/storage.factory";
 
 export const posterTemplatesRouter = Router();
 
@@ -32,24 +31,16 @@ posterTemplatesRouter.post(
   requireRole(StaffRole.MLA, StaffRole.SUPER_ADMIN),
   upload.single("image"),
   asyncHandler(async (req, res) => {
-    if (!req.file) throw new AppError(400, "MISSING_IMAGE", "A template image is required");
-    const imageUrl = await storageProvider.upload(
-      { buffer: req.file.buffer, originalName: req.file.originalname, mimeType: req.file.mimetype },
-      "poster-templates",
-    );
-    const storedBuffer = await storageProvider.read(imageUrl);
-    const metadata = await sharp(storedBuffer).metadata();
-    if (!metadata.width || !metadata.height) {
-      throw new AppError(400, "INVALID_IMAGE", "Could not read the template image dimensions");
-    }
+    const resolved = await resolveImageInput(req.file, req.body.imageUrl, "poster-templates", req.user!.sub);
+    if (!resolved) throw new AppError(400, "MISSING_IMAGE", "A template image is required");
 
     const input = createPosterTemplateSchema.parse(req.body);
     const template = await prisma.posterTemplate.create({
       data: {
         ...input,
-        imageUrl,
-        imageWidth: metadata.width,
-        imageHeight: metadata.height,
+        imageUrl: resolved.url,
+        imageWidth: resolved.width,
+        imageHeight: resolved.height,
         createdById: req.user!.sub,
       },
     });
@@ -66,24 +57,15 @@ posterTemplatesRouter.patch(
     const existing = await prisma.posterTemplate.findUnique({ where: { id: req.params.id } });
     if (!existing) throw new AppError(404, "NOT_FOUND", "Poster template not found");
 
-    let imageFields: { imageUrl: string; imageWidth: number; imageHeight: number } | undefined;
-    if (req.file) {
-      const imageUrl = await storageProvider.upload(
-        { buffer: req.file.buffer, originalName: req.file.originalname, mimeType: req.file.mimetype },
-        "poster-templates",
-      );
-      const storedBuffer = await storageProvider.read(imageUrl);
-      const metadata = await sharp(storedBuffer).metadata();
-      if (!metadata.width || !metadata.height) {
-        throw new AppError(400, "INVALID_IMAGE", "Could not read the template image dimensions");
-      }
-      imageFields = { imageUrl, imageWidth: metadata.width, imageHeight: metadata.height };
-    }
+    const resolved = await resolveImageInput(req.file, req.body.imageUrl, "poster-templates", req.user!.sub);
 
     const input = updatePosterTemplateSchema.parse(req.body);
     const template = await prisma.posterTemplate.update({
       where: { id: req.params.id },
-      data: { ...input, ...imageFields },
+      data: {
+        ...input,
+        ...(resolved ? { imageUrl: resolved.url, imageWidth: resolved.width, imageHeight: resolved.height } : {}),
+      },
     });
     res.json(template);
   }),

@@ -9,6 +9,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../lib/asyncHandler";
 import { AppError } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
+import { recordMediaAsset } from "../../lib/recordMediaAsset";
 import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.middleware";
 import { upload } from "../../middleware/upload.middleware";
 import { storageProvider } from "../../storage/storage.factory";
@@ -56,6 +57,7 @@ candidateAnnouncementsRouter.post(
         { buffer: req.file.buffer, originalName: req.file.originalname, mimeType: req.file.mimetype },
         "candidate-announcements",
       );
+      await recordMediaAsset({ url: profileImageUrl, mimeType: req.file.mimetype, uploadedById: req.user!.sub });
     }
     const input = createCandidateAnnouncementSchema.parse({
       ...req.body,
@@ -83,6 +85,7 @@ candidateAnnouncementsRouter.patch(
         { buffer: req.file.buffer, originalName: req.file.originalname, mimeType: req.file.mimetype },
         "candidate-announcements",
       );
+      await recordMediaAsset({ url: profileImageUrl, mimeType: req.file.mimetype, uploadedById: req.user!.sub });
     }
     const input = updateCandidateAnnouncementSchema.parse({
       ...req.body,

@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
+import { MediaPickerButtons } from "../../components/media/MediaPickerButtons";
+import type { MediaAsset } from "../../components/media/MediaLibraryModal";
 import { apiClient } from "../../lib/api-client";
 import { extractErrorMessage } from "../../lib/errors";
 
@@ -21,25 +23,33 @@ export function AppBannerPage() {
   });
 
   const [file, setFile] = useState<File | null>(null);
+  const [libraryImageUrl, setLibraryImageUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  function handleFile(f: File) {
     setFile(f);
+    setLibraryImageUrl(null);
     setPreviewUrl(URL.createObjectURL(f));
+  }
+
+  function handleLibrarySelect(asset: MediaAsset) {
+    setFile(null);
+    setLibraryImageUrl(asset.url);
+    setPreviewUrl(asset.url);
   }
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
       const form = new FormData();
       form.append("isActive", "true");
-      form.append("image", file!);
+      if (file) form.append("image", file);
+      else if (libraryImageUrl) form.append("imageUrl", libraryImageUrl);
       return apiClient.post("/app-banners", form);
     },
     onSuccess: () => {
       setFile(null);
+      setLibraryImageUrl(null);
       setPreviewUrl(null);
       setError(null);
       queryClient.invalidateQueries({ queryKey: ["app-banners"] });
@@ -69,11 +79,14 @@ export function AppBannerPage() {
 
       <Card className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">नया बैनर अपलोड करें</h2>
-        <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm" />
+        <MediaPickerButtons onFile={handleFile} onLibrarySelect={handleLibrarySelect} />
         {previewUrl && <img src={previewUrl} alt="" className="h-64 w-full rounded-md object-contain bg-slate-100" />}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div>
-          <Button disabled={!file || uploadMutation.isPending} onClick={() => uploadMutation.mutate()}>
+          <Button
+            disabled={(!file && !libraryImageUrl) || uploadMutation.isPending}
+            onClick={() => uploadMutation.mutate()}
+          >
             {uploadMutation.isPending ? "अपलोड हो रहा है…" : "अपलोड करें और सक्रिय करें"}
           </Button>
         </div>

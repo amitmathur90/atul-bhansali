@@ -280,6 +280,7 @@ model StaffMember {
   issuedWarnings                UserWarning[]
   createdPosterTemplates        PosterTemplate[]
   createdAppBanners             AppBanner[]
+  uploadedMedia                 MediaAsset[]
 }
 
 model StaffWardAssignment {
@@ -883,4 +884,19 @@ model AppBanner {
   updatedAt   DateTime @updatedAt
 
   @@index([isActive])
+}
+
+// Every image uploaded anywhere in the admin panel is recorded here so it can be
+// re-used later from the shared "Media Library" picker instead of re-uploading.
+model MediaAsset {
+  id           String      @id @default(uuid())
+  url          String
+  width        Int
+  height       Int
+  mimeType     String
+  uploadedById String
+  uploadedBy   StaffMember @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime    @default(now())
+
+  @@index([uploadedById])
 }

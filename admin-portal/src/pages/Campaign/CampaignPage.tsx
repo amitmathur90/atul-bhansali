@@ -7,6 +7,8 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
+import { MediaPickerButtons } from "../../components/media/MediaPickerButtons";
+import type { MediaAsset } from "../../components/media/MediaLibraryModal";
 import { apiClient } from "../../lib/api-client";
 import { extractErrorMessage } from "../../lib/errors";
 
@@ -75,6 +77,7 @@ function CandidateAnnouncementsSection() {
   const [partyName, setPartyName] = useState("");
   const [message, setMessage] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +96,7 @@ function CandidateAnnouncementsSection() {
     setPartyName("");
     setMessage("");
     setImage(null);
+    setImageUrl(null);
     setImagePreview(null);
     setError(null);
   }
@@ -106,8 +110,21 @@ function CandidateAnnouncementsSection() {
     setPartyName(a.partyName ?? "");
     setMessage(a.message);
     setImage(null);
+    setImageUrl(null);
     setImagePreview(a.profileImageUrl ?? null);
     setError(null);
+  }
+
+  function handleImageFile(file: File) {
+    setImage(file);
+    setImageUrl(null);
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  function handleImageLibrarySelect(asset: MediaAsset) {
+    setImage(null);
+    setImageUrl(asset.url);
+    setImagePreview(asset.url);
   }
 
   const saveMutation = useMutation({
@@ -120,6 +137,7 @@ function CandidateAnnouncementsSection() {
       if (partyName) form.append("partyName", partyName);
       form.append("message", message);
       if (image) form.append("image", image);
+      else if (imageUrl) form.append("profileImageUrl", imageUrl);
       if (editingId) return (await apiClient.patch(`/candidate-announcements/${editingId}`, form)).data;
       return (await apiClient.post("/candidate-announcements", form)).data;
     },
@@ -168,16 +186,7 @@ function CandidateAnnouncementsSection() {
           className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
         />
         <div className="mt-3 flex items-center gap-3">
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/heic"
-            onChange={(e) => {
-              const file = e.target.files?.[0] ?? null;
-              setImage(file);
-              setImagePreview(file ? URL.createObjectURL(file) : null);
-            }}
-            className="text-sm text-slate-600 dark:text-slate-300"
-          />
+          <MediaPickerButtons onFile={handleImageFile} onLibrarySelect={handleImageLibrarySelect} />
           {imagePreview && <img src={imagePreview} alt="Preview" className="h-12 w-12 rounded-full object-cover" />}
         </div>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -260,6 +269,7 @@ function CampaignPostsSection() {
   const [description, setDescription] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -275,6 +285,7 @@ function CampaignPostsSection() {
     setDescription("");
     setVideoUrl("");
     setImage(null);
+    setImageUrl(null);
     setImagePreview(null);
     setError(null);
   }
@@ -286,8 +297,21 @@ function CampaignPostsSection() {
     setDescription(p.description ?? "");
     setVideoUrl(p.type === CampaignPostType.VIDEO ? p.mediaUrl ?? "" : "");
     setImage(null);
+    setImageUrl(null);
     setImagePreview(p.type !== CampaignPostType.VIDEO ? p.mediaUrl ?? null : null);
     setError(null);
+  }
+
+  function handleImageFile(file: File) {
+    setImage(file);
+    setImageUrl(null);
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  function handleImageLibrarySelect(asset: MediaAsset) {
+    setImage(null);
+    setImageUrl(asset.url);
+    setImagePreview(asset.url);
   }
 
   const saveMutation = useMutation({
@@ -298,6 +322,7 @@ function CampaignPostsSection() {
       if (description) form.append("description", description);
       if (type === CampaignPostType.VIDEO && videoUrl) form.append("mediaUrl", videoUrl);
       if (image) form.append("image", image);
+      else if (imageUrl && type !== CampaignPostType.VIDEO) form.append("mediaUrl", imageUrl);
       if (editingId) return (await apiClient.patch(`/campaign-posts/${editingId}`, form)).data;
       return (await apiClient.post("/campaign-posts", form)).data;
     },
@@ -350,16 +375,7 @@ function CampaignPostsSection() {
             />
           ) : (
             <div className="flex items-center gap-3">
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/heic"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setImage(file);
-                  setImagePreview(file ? URL.createObjectURL(file) : null);
-                }}
-                className="text-sm text-slate-600 dark:text-slate-300"
-              />
+              <MediaPickerButtons onFile={handleImageFile} onLibrarySelect={handleImageLibrarySelect} />
               {imagePreview && <img src={imagePreview} alt="Preview" className="h-12 w-12 rounded-md object-cover" />}
             </div>
           )}
