@@ -15,6 +15,12 @@ const envSchema = z.object({
   STORAGE_PROVIDER: z.enum(["local", "s3", "cloudinary"]).default("local"),
   PUSH_PROVIDER: z.enum(["console", "expo"]).default("console"),
 
+  // Required only when STORAGE_PROVIDER=cloudinary — validated at provider construction
+  // time instead of here, so other storage modes don't need these set at all.
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+
   SEED_ADMIN_USERNAME: z.string().default("admin"),
   SEED_ADMIN_PASSWORD: z.string().default("ChangeMe123!"),
 
