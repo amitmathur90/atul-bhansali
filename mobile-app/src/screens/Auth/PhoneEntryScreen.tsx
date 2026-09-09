@@ -18,7 +18,7 @@ import type { AuthStackParamList } from "../../navigation/types";
 
 // Replace these two files (same filenames) to update the photos — no code change
 // needed, just overwrite the files and reload.
-const mlaPhoto = require("../../../assets/mla-photo.png");
+const mlaPhoto = require("../../../assets/mla-photo.jpg");
 const heroBackground = require("../../../assets/home-hero-bg.png");
 
 type Props = NativeStackScreenProps<AuthStackParamList, "PhoneEntry">;

@@ -6,7 +6,7 @@ import { Image, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity,
 
 // Replace these two files (same filenames) to update the photos — no code change
 // needed, just overwrite the files and reload.
-const mlaPhoto = require("../../assets/mla-photo.png");
+const mlaPhoto = require("../../assets/mla-photo.jpg");
 const heroBackground = require("../../assets/home-page-bg.png");
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { HomeStackParamList, MainTabParamList } from "../navigation/types";
