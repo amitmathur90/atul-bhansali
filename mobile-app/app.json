@@ -10,7 +10,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "in.gov.itsdigitalindia.citizenconnect",
+      "package": "com.citizenconnection.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
