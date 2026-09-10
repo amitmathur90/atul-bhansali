@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Directory, File, Paths } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
+import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -186,11 +188,30 @@ export function FeedListScreen({ navigation }: Props) {
     },
   });
 
+  async function shareToOtherApps(post: FeedPost) {
+    const imageUrl = post.mediaType === "IMAGE" ? post.mediaUrl : null;
+    if (!imageUrl) {
+      Share.share({ message: post.content });
+      return;
+    }
+    // React Native's Share API can't attach a remote image URL as a real attachment on
+    // Android — apps like Instagram/WhatsApp only receive the caption text unless the
+    // image is downloaded to a local file first and handed to the native share sheet.
+    try {
+      const dir = new Directory(Paths.cache, "shared-posts");
+      dir.create({ idempotent: true, intermediates: true });
+      const file = await File.downloadFileAsync(imageUrl, dir);
+      await Sharing.shareAsync(file.uri, { mimeType: "image/jpeg", dialogTitle: "पोस्ट शेयर करें" });
+    } catch {
+      Share.share({ message: post.content });
+    }
+  }
+
   function handleSharePress(post: FeedPost) {
     Alert.alert("पोस्ट शेयर करें", undefined, [
       { text: "रद्द करें", style: "cancel" },
       { text: "मेरी फीड पर शेयर करें", onPress: () => createMutation.mutate(post.id) },
-      { text: "अन्य ऐप में शेयर करें", onPress: () => Share.share({ message: post.content }) },
+      { text: "अन्य ऐप में शेयर करें", onPress: () => shareToOtherApps(post) },
     ]);
   }
 
