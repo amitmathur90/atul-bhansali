@@ -2,13 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useQuery } from "@tanstack/react-query";
 import { Image, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-// Replace these two files (same filenames) to update the photos — no code change
-// needed, just overwrite the files and reload.
-const mlaPhoto = require("../../assets/mla-photo.png");
+// Fallback used until the admin-configured candidate.photoUrl setting loads (or if
+// it was never set) — see SettingsPage.tsx's "उम्मीदवार की फोटो" field in admin portal.
+const mlaPhotoFallback = require("../../assets/mla-photo.png");
 const heroBackground = require("../../assets/home-page-bg.png");
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { apiClient } from "../lib/api-client";
 import type { HomeStackParamList, MainTabParamList } from "../navigation/types";
 import { colors, radius, shadow, spacing } from "../theme";
 
@@ -19,6 +21,12 @@ type Props = CompositeScreenProps<
 
 export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { data: settings } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: async () => (await apiClient.get<Record<string, string>>("/settings")).data,
+    staleTime: 5 * 60 * 1000,
+  });
+  const mlaPhoto = settings?.["candidate.photoUrl"] ? { uri: settings["candidate.photoUrl"] } : mlaPhotoFallback;
 
   return (
     <View style={styles.screen}>

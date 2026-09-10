@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -16,9 +17,9 @@ import {
 import { apiClient } from "../../lib/api-client";
 import type { AuthStackParamList } from "../../navigation/types";
 
-// Replace these two files (same filenames) to update the photos — no code change
-// needed, just overwrite the files and reload.
-const mlaPhoto = require("../../../assets/mla-photo.png");
+// Fallback used until the admin-configured candidate.photoUrl setting loads (or if
+// it was never set) — see SettingsPage.tsx's "उम्मीदवार की फोटो" field in admin portal.
+const mlaPhotoFallback = require("../../../assets/mla-photo.png");
 const heroBackground = require("../../../assets/home-hero-bg.png");
 
 type Props = NativeStackScreenProps<AuthStackParamList, "PhoneEntry">;
@@ -27,6 +28,12 @@ export function PhoneEntryScreen({ navigation }: Props) {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: settings } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: async () => (await apiClient.get<Record<string, string>>("/settings")).data,
+    staleTime: 5 * 60 * 1000,
+  });
+  const mlaPhoto = settings?.["candidate.photoUrl"] ? { uri: settings["candidate.photoUrl"] } : mlaPhotoFallback;
 
   async function handleContinue() {
     if (!/^[6-9]\d{9}$/.test(phone)) {
