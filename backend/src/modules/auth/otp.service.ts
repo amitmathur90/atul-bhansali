@@ -8,6 +8,14 @@ import { createSmsProvider } from "./sms";
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 
+// A fixed, effectively-never-expiring login for Google Play / App Store reviewers.
+// A real random OTP only exists within a single API response, which a reviewer
+// can't reliably reuse across a review session spanning days — this account gets
+// the same OTP every time instead. "9999999999" is never a real citizen's number.
+const REVIEWER_TEST_PHONE = "9999999999";
+const REVIEWER_TEST_OTP = "123456";
+const REVIEWER_OTP_TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+
 const smsProvider = createSmsProvider();
 
 function generateOtp(): string {
@@ -15,19 +23,27 @@ function generateOtp(): string {
 }
 
 export async function requestOtp(phone: string) {
+  const isReviewerAccount = phone === REVIEWER_TEST_PHONE;
   const existingCitizen = await prisma.citizen.findUnique({ where: { phone } });
   const purpose = existingCitizen ? "LOGIN" : "REGISTRATION";
 
-  const otp = generateOtp();
+  const otp = isReviewerAccount ? REVIEWER_TEST_OTP : generateOtp();
   const otpHash = await bcrypt.hash(otp, 10);
 
   await prisma.otpVerification.create({
-    data: { phone, otpHash, purpose, expiresAt: new Date(Date.now() + OTP_TTL_MS) },
+    data: {
+      phone,
+      otpHash,
+      purpose,
+      expiresAt: new Date(Date.now() + (isReviewerAccount ? REVIEWER_OTP_TTL_MS : OTP_TTL_MS)),
+    },
   });
 
-  await smsProvider.sendOtp(phone, otp);
+  if (!isReviewerAccount) {
+    await smsProvider.sendOtp(phone, otp);
+  }
 
-  return { purpose, otp };
+  return { purpose, otp, isReviewerAccount };
 }
 
 export async function verifyOtp(input: OtpVerifyInput) {

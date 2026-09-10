@@ -20,7 +20,9 @@ export const requestOtpHandler = asyncHandler(async (req, res) => {
     purpose: result.purpose,
     // No real SMS/WhatsApp delivery is configured yet (SMS_PROVIDER=console just logs
     // server-side), so surface the OTP in the response until a real provider is wired up.
-    ...(env.SMS_PROVIDER === "console" ? { devOtp: result.otp } : {}),
+    // Always surfaced for the reviewer test account regardless of provider, since a real
+    // SMS provider being added later shouldn't break app store review access.
+    ...(env.SMS_PROVIDER === "console" || result.isReviewerAccount ? { devOtp: result.otp } : {}),
   });
 });
 
