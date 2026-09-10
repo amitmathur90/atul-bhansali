@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -88,6 +89,18 @@ export function CampaignScreen({}: Props) {
     queryKey: ["campaign-events"],
     queryFn: async () => (await apiClient.get<{ items: CampaignEvent[] }>("/campaign-events")).data.items,
   });
+
+  // React Navigation keeps tab screens mounted, so switching back to this tab doesn't
+  // remount it — without this, admin edits made while the user was on another tab
+  // wouldn't show up until a manual pull-to-refresh.
+  useFocusEffect(
+    useCallback(() => {
+      candidate.refetch();
+      posts.refetch();
+      events.refetch();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
 
   const likeMutation = useMutation({
     mutationFn: async (postId: string) => (await apiClient.post(`/campaign-posts/${postId}/like`)).data,

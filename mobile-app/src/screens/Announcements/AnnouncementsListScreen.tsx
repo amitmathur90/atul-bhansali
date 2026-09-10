@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, Image, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { apiClient } from "../../lib/api-client";
 import type { NoticeStackParamList } from "../../navigation/types";
@@ -35,6 +36,15 @@ export function AnnouncementsListScreen({ navigation }: Props) {
     queryKey: ["announcements"],
     queryFn: async () => (await apiClient.get<{ items: AnnouncementItem[] }>("/announcements")).data.items,
   });
+
+  // React Navigation keeps tab screens mounted, so switching back to this tab doesn't
+  // remount it — without this, admin edits made while the user was on another tab
+  // wouldn't show up until a manual pull-to-refresh.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   const filtered = data?.filter((item) => item.title.toLowerCase().includes(search.toLowerCase())) ?? [];
 

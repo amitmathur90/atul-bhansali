@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Directory, File, Paths } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import * as Sharing from "expo-sharing";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -118,6 +119,16 @@ export function FeedListScreen({ navigation }: Props) {
     queryKey: ["hashtags-trending"],
     queryFn: async () => (await apiClient.get<{ items: TrendingHashtag[] }>("/hashtags/trending")).data.items,
   });
+
+  // React Navigation keeps tab screens mounted, so switching back to this tab doesn't
+  // remount it — without this, admin edits made while the user was on another tab
+  // wouldn't show up until a manual pull-to-refresh.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
 
   const createMutation = useMutation({
     mutationFn: async (sharedPostId?: string) => {
