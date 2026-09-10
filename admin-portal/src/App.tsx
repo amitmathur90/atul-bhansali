@@ -7,6 +7,7 @@ import { AnnouncementsPage } from "./pages/Announcements/AnnouncementsPage";
 import { AppBannerPage } from "./pages/AppBanner/AppBannerPage";
 import { AppointmentsPage } from "./pages/Appointments/AppointmentsPage";
 import { LoginPage } from "./pages/Auth/LoginPage";
+import { DeleteAccountPage } from "./pages/Legal/DeleteAccountPage";
 import { PrivacyPolicyPage } from "./pages/Legal/PrivacyPolicyPage";
 import { CampaignPage } from "./pages/Campaign/CampaignPage";
 import { FeedModerationPage } from "./pages/Feed/FeedModerationPage";
@@ -31,6 +32,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/delete-account" element={<DeleteAccountPage />} />
           <Route
             element={
               <ProtectedRoute>

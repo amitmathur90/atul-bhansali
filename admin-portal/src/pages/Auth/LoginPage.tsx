@@ -64,12 +64,15 @@ export function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <Link
-          to="/privacy-policy"
-          className="mt-4 block text-center text-xs text-slate-500 hover:text-brand-navy hover:underline dark:text-slate-400"
-        >
-          Privacy Policy
-        </Link>
+        <div className="mt-4 flex items-center justify-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <Link to="/privacy-policy" className="hover:text-brand-navy hover:underline">
+            Privacy Policy
+          </Link>
+          <span>·</span>
+          <Link to="/delete-account" className="hover:text-brand-navy hover:underline">
+            Delete Account
+          </Link>
+        </div>
       </Card>
     </div>
   );
