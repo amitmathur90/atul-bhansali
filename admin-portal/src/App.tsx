@@ -7,6 +7,7 @@ import { AnnouncementsPage } from "./pages/Announcements/AnnouncementsPage";
 import { AppBannerPage } from "./pages/AppBanner/AppBannerPage";
 import { AppointmentsPage } from "./pages/Appointments/AppointmentsPage";
 import { LoginPage } from "./pages/Auth/LoginPage";
+import { PrivacyPolicyPage } from "./pages/Legal/PrivacyPolicyPage";
 import { CampaignPage } from "./pages/Campaign/CampaignPage";
 import { FeedModerationPage } from "./pages/Feed/FeedModerationPage";
 import { CitizensPage } from "./pages/Citizens/CitizensPage";
@@ -29,6 +30,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route
             element={
               <ProtectedRoute>
