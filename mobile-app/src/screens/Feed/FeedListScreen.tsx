@@ -12,6 +12,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -32,6 +33,9 @@ import type { FeedStackParamList } from "../../navigation/types";
 import { colors, radius, shadow, spacing } from "../../theme";
 
 type Props = NativeStackScreenProps<FeedStackParamList, "FeedList">;
+
+const INSTAGRAM_URL = "https://www.instagram.com/siddharthmehra_inc/";
+const FACEBOOK_URL = "https://www.facebook.com/siddharthmehra.inc";
 
 const REACTION_META: Record<string, { emoji: string; label: string }> = {
   LIKE: { emoji: "👍", label: "लाइक" },
@@ -239,6 +243,26 @@ export function FeedListScreen({ navigation }: Props) {
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         ListHeaderComponent={
           <View>
+            <View style={styles.socialCard}>
+              <Text style={styles.socialTitle}>हमें सोशल मीडिया पर फॉलो करें</Text>
+              <View style={styles.socialButtonRow}>
+                <TouchableOpacity
+                  style={[styles.socialButton, styles.instagramButton]}
+                  onPress={() => Linking.openURL(INSTAGRAM_URL)}
+                >
+                  <Ionicons name="logo-instagram" size={18} color="#fff" />
+                  <Text style={styles.socialButtonText}>Instagram</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.socialButton, styles.facebookButton]}
+                  onPress={() => Linking.openURL(FACEBOOK_URL)}
+                >
+                  <Ionicons name="logo-facebook" size={18} color="#fff" />
+                  <Text style={styles.socialButtonText}>Facebook</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {!!trending?.length && (
               <View style={styles.trendingCard}>
                 <Text style={styles.trendingTitle}>🔥 Trending Now</Text>
@@ -607,6 +631,21 @@ function FollowButton({ citizenId }: { citizenId: string }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl * 2 },
+  socialCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, ...shadow.card },
+  socialTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: spacing.sm },
+  socialButtonRow: { flexDirection: "row", gap: spacing.sm },
+  socialButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+  },
+  instagramButton: { backgroundColor: "#C13584" },
+  facebookButton: { backgroundColor: "#1877F2" },
+  socialButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   trendingCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, ...shadow.card },
   trendingTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: spacing.sm },
   trendingChipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
