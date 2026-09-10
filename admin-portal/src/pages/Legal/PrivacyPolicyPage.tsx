@@ -15,8 +15,10 @@ export function PrivacyPolicyPage() {
         <li><strong>Phone number</strong> — used to create your account and verify your identity via OTP.</li>
         <li><strong>Name, address, ward, city, pincode</strong> — provided by you to route complaints and
           communications to the correct ward/department.</li>
-        <li><strong>Photos</strong> — attached voluntarily to complaints, your profile, or posts you create in
-          the community feed.</li>
+        <li><strong>Photos, including selfies</strong> — attached voluntarily to complaints, your profile, posts
+          you create in the community feed, or a selfie you upload to generate a personalized campaign poster.
+          Selfie photos used for the poster feature are composited into the poster image and are not used for
+          any other purpose (e.g. facial recognition).</li>
         <li><strong>Location</strong> — collected only when you attach it to a complaint, to help staff locate
           the reported issue.</li>
         <li><strong>Push notification token</strong> — used to deliver status updates and announcements to

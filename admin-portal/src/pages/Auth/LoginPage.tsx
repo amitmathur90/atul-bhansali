@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
@@ -64,6 +64,12 @@ export function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
+        <Link
+          to="/privacy-policy"
+          className="mt-4 block text-center text-xs text-slate-500 hover:text-brand-navy hover:underline dark:text-slate-400"
+        >
+          Privacy Policy
+        </Link>
       </Card>
     </div>
   );
