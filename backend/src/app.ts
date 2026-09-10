@@ -41,6 +41,12 @@ import { welfareSchemesRouter } from "./modules/welfare-schemes/welfare-schemes.
 
 export const app = express();
 
+// Both Render and a VPS behind Nginx sit the app behind a reverse proxy, which sets
+// X-Forwarded-For — without this, express-rate-limit refuses to trust that header
+// (correctly, since a malicious client could otherwise spoof it) and throws on every
+// rate-limited request. Trusting exactly one hop matches "one proxy in front of us".
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
